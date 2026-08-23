@@ -1,0 +1,6 @@
+{
+  "name": "MaxExpert360mobile",
+  "description": "MaxExpert360mobile — Service mobile de nettoyage professionnel et d'esthétique à domicile à Drummondville : autos, camions poids lourds, sofas, tapis, matelas et commercial. Produits 100% écologiques.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
