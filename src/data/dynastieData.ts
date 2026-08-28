@@ -32,7 +32,15 @@ export const DYNASTIE_INFO = {
   websiteUrl: 'https://maxexpert360.ca',
   facebook: 'MaxExpert360 Mobile',
   facebookUrl: 'https://www.facebook.com/profile.php?id=61591249901797',
-  minimumMobileService: 100,
+  squareBooking: {
+    enabled: true,
+    bookingUrl: 'https://squareup.com/appointments/book/maxexpert360',
+    siteUrl: 'https://maxexpert360.square.site',
+    locationId: 'LOC_MAXEXPERT360_DRUMMONDVILLE',
+    merchantName: 'MaxExpert360 Mobile',
+    currency: 'CAD'
+  },
+  minimumMobileService: 0,
   workingHours: {
     fr: '7j/7 : 07:30 - 20:00 • Service mobile à domicile et en entreprise',
     ua: '7 днів на тиждень : 07:30 - 20:00 • Виїзне мобільне обслуговування',
@@ -846,9 +854,9 @@ export const FAQ_DETAILING: DetailingFaqItem[] = [
       en: 'How does the MaxExpert360 mobile service at home work?'
     },
     answer: {
-      fr: 'Nous venons directement chez vous ou à votre lieu de travail avec notre unité mobile équipée de matériel professionnel (extracteurs d\'eau chaude, shampouineuses, nettoyeurs vapeur et produits écologiques). Nous desservons Drummondville et toutes les municipalités environnantes. Le déplacement dans le secteur local est inclus avec un minimum de service de 100 $.',
-      ua: 'Ми приїжджаємо до вашого будинку чи офісу з повним комплектом професійного обладнання. Обслуговуємо місто Драммондвіль та навколишні населені пункти. Виїзд по місту включений у вартість при мінімальному замовленні від 100 $.',
-      en: 'We come directly to your home or office equipped with professional hot water extractors, steam machines and eco-friendly products. We serve Drummondville and surrounding areas with a $100 service minimum.'
+      fr: 'Nous venons directement chez vous ou à votre lieu de travail avec notre unité mobile équipée de matériel professionnel (extracteurs d\'eau chaude, shampouineuses, nettoyeurs vapeur et produits écologiques). Nous desservons Drummondville et toutes les municipalités environnantes. Le déplacement dans le secteur local est inclus.',
+      ua: 'Ми приїжджаємо до вашого будинку чи офісу з повним комплектом професійного обладнання. Обслуговуємо місто Драммондвіль та навколишні населені пункти. Виїзд по місту включений у вартість.',
+      en: 'We come directly to your home or office equipped with professional hot water extractors, steam machines and eco-friendly products. We serve Drummondville and surrounding areas with local travel included.'
     }
   },
   {
@@ -894,3 +902,26 @@ export const FAQ_DETAILING: DetailingFaqItem[] = [
     }
   }
 ];
+
+export const AUTO_LAUNCH_PROMO = {
+  discountAmount: 20,
+  badgeText: {
+    fr: 'PROMO LANCEMENT -20 $',
+    ua: 'ПРОМО -20 $',
+    en: 'LAUNCH PROMO -$20'
+  }
+};
+
+export function isAutoPromoActive(): boolean {
+  return true;
+}
+
+export function calculateServicePrice(basePrice: number, _category?: string): { originalPrice: number; discount: number; finalPrice: number } {
+  const discount = 0;
+  return {
+    originalPrice: basePrice,
+    discount,
+    finalPrice: basePrice
+  };
+}
+

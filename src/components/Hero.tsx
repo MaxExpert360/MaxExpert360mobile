@@ -15,7 +15,8 @@ import {
   Car,
   Armchair,
   Bed,
-  MapPin
+  MapPin,
+  Edit3
 } from 'lucide-react';
 import { Language } from '../types';
 import { DYNASTIE_INFO } from '../data/dynastieData';
@@ -24,12 +25,14 @@ interface HeroProps {
   currentLang: Language;
   onOpenBooking: () => void;
   onOpenCalculator: (tab?: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck') => void;
+  onOpenWriteReview?: () => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({
   currentLang,
   onOpenBooking,
-  onOpenCalculator
+  onOpenCalculator,
+  onOpenWriteReview
 }) => {
   const t = {
     fr: {
@@ -47,7 +50,7 @@ export const Hero: React.FC<HeroProps> = ({
       ctaPackages: 'Voir les forfaits & tarifs',
       ratingText: '5.0 ★ sur Google & Facebook • Service impeccable garanti',
       serviceZone: 'Desservant Drummondville, St-Cyrille, St-Germain, Wickham et tout le Centre-du-Québec',
-      minServiceNote: 'Minimum de service à domicile : 100 $ (Déplacement local inclus)'
+      minServiceNote: 'Déplacement local inclus à Drummondville • Sans acompte'
     },
     ua: {
       eyebrow: 'Мобільний Клінінг & Детейлінг • Drummondville',
@@ -64,7 +67,7 @@ export const Hero: React.FC<HeroProps> = ({
       ctaPackages: 'Переглянути ціни та пакети',
       ratingText: '5.0 ★ Google & Facebook • Гарантія чистоти та якості',
       serviceZone: 'Обслуговуємо Drummondville, St-Cyrille, St-Germain та весь Centre-du-Québec',
-      minServiceNote: 'Мінімальне замовлення з виїздом: 100 $ (виїзд по місту включено)'
+      minServiceNote: 'Виїзд по місту включено • Без передплати'
     },
     en: {
       eyebrow: 'Mobile Detailing & Deep Cleaning • Drummondville',
@@ -81,7 +84,7 @@ export const Hero: React.FC<HeroProps> = ({
       ctaPackages: 'View Packages & Pricing',
       ratingText: '5.0 ★ Google & Facebook • 100% Satisfaction Guaranteed',
       serviceZone: 'Serving Drummondville, St-Cyrille, St-Germain, Wickham & surrounding areas',
-      minServiceNote: 'Mobile service minimum: $100 (Local travel included)'
+      minServiceNote: 'Local travel included in Drummondville • No deposit required'
     }
   }[currentLang];
 
@@ -114,15 +117,35 @@ export const Hero: React.FC<HeroProps> = ({
                 {t.eyebrow}
               </span>
 
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0F1A12] border border-[#1E3322] text-[11px] text-[#D1D5DB]">
+              {/* Clickable Rating Badge linking to Reviews */}
+              <a 
+                href="#reviews"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0F1A12] hover:bg-[#15291A] border border-[#1E3322] hover:border-[#22C55E]/60 text-[11px] text-[#D1D5DB] transition-all cursor-pointer group shadow-sm active:scale-95"
+                title={currentLang === 'fr' ? 'Consulter les 28 avis clients' : currentLang === 'ua' ? 'Читати 28 відгуків клієнтів' : 'Read 28 client reviews'}
+              >
                 <div className="flex text-[#FBBF24]">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className="w-3 h-3 fill-[#FBBF24]" />
                   ))}
                 </div>
-                <span className="font-bold text-white">5.0</span>
-                <span className="text-[#9CA3AF]">• Drummondville</span>
-              </div>
+                <span className="font-bold text-white font-mono">5.0</span>
+                <span className="text-[#86EFAC] font-mono group-hover:underline">
+                  {currentLang === 'fr' ? '(28 avis)' : currentLang === 'ua' ? '(28 відгуків)' : '(28 reviews)'}
+                </span>
+                <span className="text-[#9CA3AF] hidden sm:inline">• Drummondville</span>
+              </a>
+
+              {/* Dedicated "Write Review" button right next to rating */}
+              <button
+                type="button"
+                onClick={onOpenWriteReview}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#142918] hover:bg-[#22C55E] text-[#86EFAC] hover:text-black border border-[#22C55E]/50 font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-md hover:scale-105 active:scale-95 group"
+              >
+                <Edit3 className="w-3 h-3 text-[#22C55E] group-hover:text-black" />
+                <span>
+                  {currentLang === 'fr' ? 'Écrire un avis' : currentLang === 'ua' ? 'Написати відгук' : 'Write a review'}
+                </span>
+              </button>
             </div>
 
             {/* Main Headline styled like the flyer */}
@@ -169,7 +192,7 @@ export const Hero: React.FC<HeroProps> = ({
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-2">
               <a
                 href="#calculator"
-                onClick={onOpenCalculator}
+                onClick={() => onOpenCalculator('auto')}
                 className="px-7 py-4 rounded-xl bg-gradient-to-r from-[#16A34A] via-[#22C55E] to-[#15803D] hover:brightness-110 active:scale-95 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-[#16A34A]/30 flex items-center justify-center gap-2.5 transition-all text-center cursor-pointer border border-[#86EFAC]/40"
               >
                 <span>{t.ctaBook}</span>

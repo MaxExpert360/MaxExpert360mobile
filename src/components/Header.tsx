@@ -12,7 +12,9 @@ import {
   Facebook,
   Mail,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Star,
+  Edit3
 } from 'lucide-react';
 import { DYNASTIE_INFO } from '../data/dynastieData';
 import { Language } from '../types';
@@ -23,13 +25,15 @@ interface HeaderProps {
   onLanguageChange: (lang: Language) => void;
   onOpenBooking: () => void;
   onOpenCallback: () => void;
+  onOpenWriteReview?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentLang,
   onLanguageChange,
   onOpenBooking,
-  onOpenCallback
+  onOpenCallback,
+  onOpenWriteReview
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
@@ -105,12 +109,37 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-4 shrink-0 pl-2">
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0 pl-2">
+            {/* Top Bar Rating & Reviews Link */}
+            <div className="hidden sm:flex items-center gap-2 bg-black/30 px-2.5 py-0.5 rounded border border-white/20">
+              <a
+                href="#reviews"
+                className="flex items-center gap-1 text-[11px] text-[#FDE047] hover:text-white font-bold transition-colors"
+                title={currentLang === 'fr' ? 'Consulter les avis clients' : currentLang === 'ua' ? 'Переглянути відгуки' : 'Read client reviews'}
+              >
+                <Star className="w-3 h-3 fill-[#FDE047] text-[#FDE047]" />
+                <span>5.0</span>
+                <span className="text-[#BBF7D0] font-normal text-[10px]">
+                  ({currentLang === 'fr' ? '28 avis' : currentLang === 'ua' ? '28 відгуків' : '28 reviews'})
+                </span>
+              </a>
+              {onOpenWriteReview && (
+                <button
+                  type="button"
+                  onClick={onOpenWriteReview}
+                  className="text-[10px] bg-[#22C55E]/20 hover:bg-[#22C55E] text-[#86EFAC] hover:text-black px-2 py-0.5 rounded font-bold transition-all cursor-pointer flex items-center gap-1 border border-[#22C55E]/40"
+                >
+                  <Edit3 className="w-2.5 h-2.5" />
+                  <span>{currentLang === 'fr' ? 'Écrire' : currentLang === 'ua' ? 'Відгук' : 'Write'}</span>
+                </button>
+              )}
+            </div>
+
             <a 
               href={DYNASTIE_INFO.facebookUrl}
               target="_blank" 
               rel="noreferrer"
-              className="hidden sm:flex items-center gap-1.5 text-white/90 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-[11px] font-medium transition-colors"
+              className="hidden md:flex items-center gap-1.5 text-white/90 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-[11px] font-medium transition-colors"
             >
               <Facebook className="w-3.5 h-3.5 text-[#60A5FA]" />
               <span>{DYNASTIE_INFO.facebook}</span>
@@ -289,14 +318,29 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
               <span className="text-[10px] bg-[#22C55E] text-black px-2 py-0.5 rounded font-mono font-bold">LIVE</span>
             </a>
-            <a 
-              href="#reviews" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="p-3 bg-[#132016] rounded-lg border border-[#203625] hover:border-[#22C55E] transition-colors flex items-center justify-between col-span-2"
-            >
-              <span>{t.reviews}</span>
-              <span>⭐</span>
-            </a>
+            <div className="p-3 bg-[#132016] rounded-lg border border-[#203625] hover:border-[#22C55E] col-span-2 flex items-center justify-between">
+              <a 
+                href="#reviews" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 text-white font-bold"
+              >
+                <span>⭐ 5.0 {t.reviews}</span>
+                <span className="text-[10px] text-[#BBF7D0]">(28)</span>
+              </a>
+              {onOpenWriteReview && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onOpenWriteReview();
+                  }}
+                  className="text-[11px] bg-[#22C55E] text-black font-bold px-2.5 py-1 rounded-md flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>{currentLang === 'fr' ? 'Écrire' : currentLang === 'ua' ? 'Написати' : 'Write'}</span>
+                </button>
+              )}
+            </div>
             <a 
               href="#contact" 
               onClick={() => setMobileMenuOpen(false)}

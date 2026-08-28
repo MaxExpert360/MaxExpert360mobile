@@ -23,6 +23,11 @@ import {
   Language, 
   VehicleCategory 
 } from '../types';
+import { 
+  AUTO_LAUNCH_PROMO, 
+  isAutoPromoActive, 
+  calculateServicePrice 
+} from '../config/promotions';
 
 interface PricingPackagesProps {
   currentLang: Language;
@@ -48,7 +53,7 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
       priceFinalNote: 'Prix final selon l\'état du véhicule',
       optionsTitle: 'Options & Suppléments Disponibles',
       optionsNote: 'Les suppléments sont toujours validés avec vous avant le début des travaux.',
-      minServiceBadge: 'Minimum de service à domicile : 100 $ (Déplacement local inclus)'
+      minServiceBadge: 'Déplacement local inclus à Drummondville • Sans acompte'
     },
     ua: {
       eyebrow: 'Пакети Обслуговування з Виїздом',
@@ -62,7 +67,7 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
       priceFinalNote: 'Кінцева ціна залежить від стану авто',
       optionsTitle: 'Додаткові Опції та Послуги',
       optionsNote: 'Усі доплати обовʼязково узгоджуються з вами до початку робіт.',
-      minServiceBadge: 'Мінімальне замовлення з виїздом : 100 $ (Виїзд включено)'
+      minServiceBadge: 'Виїзд по Драммондвілю включено • Без передплати'
     },
     en: {
       eyebrow: 'Mobile At-Home Packages',
@@ -76,7 +81,7 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
       priceFinalNote: 'Final price according to vehicle condition',
       optionsTitle: 'Available Options & Add-ons',
       optionsNote: 'All extra surcharges are confirmed with you before work begins.',
-      minServiceBadge: 'Mobile service minimum: $100 (Local travel included)'
+      minServiceBadge: 'Local travel included in Drummondville • No deposit'
     }
   }[currentLang];
 
@@ -87,9 +92,18 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
         
         {/* Section Heading */}
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12 space-y-3">
-          <span className="inline-block text-[11px] uppercase tracking-[0.25em] text-[#22C55E] font-mono font-bold bg-[#0F1E13] px-3.5 py-1 rounded-full border border-[#22C55E]/40">
-            {t.eyebrow}
-          </span>
+          {isAutoPromoActive() && (
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#DC2626]/20 via-[#F97316]/20 to-[#22C55E]/20 border border-[#F97316] text-[#FED7AA] px-4 py-1.5 rounded-full text-xs font-mono font-bold shadow-lg animate-pulse mb-2">
+              <Flame className="w-4 h-4 text-[#F97316]" />
+              <span>{AUTO_LAUNCH_PROMO.title[currentLang] || AUTO_LAUNCH_PROMO.title.fr}</span>
+            </div>
+          )}
+          
+          <div>
+            <span className="inline-block text-[11px] uppercase tracking-[0.25em] text-[#22C55E] font-mono font-bold bg-[#0F1E13] px-3.5 py-1 rounded-full border border-[#22C55E]/40">
+              {t.eyebrow}
+            </span>
+          </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-heading font-black text-white tracking-tight uppercase">
             {t.title}
           </h2>
@@ -143,7 +157,8 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
         {/* 3 Package Cards Grid directly matching flyer cards */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-7 items-stretch">
           {DETAILING_PACKAGES.map((pkg) => {
-            const price = pkg.prices[selectedVehicleType] || pkg.prices.auto;
+            const rawPrice = pkg.prices[selectedVehicleType] || pkg.prices.auto;
+            const priceInfo = calculateServicePrice(rawPrice, selectedVehicleType);
             const isFeatured = pkg.popular;
             const isRejuvenation = pkg.id === 'remise_a_neuf';
 
@@ -189,7 +204,7 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
                     </p>
                   </div>
 
-                  {/* Price Block */}
+                  {/* Price Block with Launch Promo Support */}
                   <div className="pt-3 border-t border-[#1A2D1F] flex items-baseline justify-between">
                     <div>
                       {isRejuvenation && (
@@ -197,9 +212,27 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
                           À partir de
                         </span>
                       )}
-                      <span className="font-heading text-4xl sm:text-5xl font-black text-white">
-                        {price} $
-                      </span>
+                      
+                      {priceInfo.isPromoApplied ? (
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="line-through text-[#6B7280] text-lg font-mono font-bold">
+                              {priceInfo.regularPrice} $
+                            </span>
+                            <span className="font-heading text-4xl sm:text-5xl font-black text-[#22C55E]">
+                              {priceInfo.finalPrice} $
+                            </span>
+                            <span className="bg-[#F97316] text-black text-[10px] uppercase font-mono font-black px-1.5 py-0.5 rounded shadow">
+                              PROMO
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-heading text-4xl sm:text-5xl font-black text-white">
+                          {priceInfo.regularPrice} $
+                        </span>
+                      )}
+
                       <span className="text-[10px] text-[#6B7280] block font-mono">
                         CAD • {selectedVehicleType === 'auto' ? 'Auto' : selectedVehicleType === 'suv' ? 'VUS' : 'Camionnette / Van'}
                       </span>

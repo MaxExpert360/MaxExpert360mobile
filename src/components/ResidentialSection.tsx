@@ -24,12 +24,14 @@ interface ResidentialSectionProps {
   currentLang: Language;
   onOpenBooking: () => void;
   onOpenCalculator: () => void;
+  onSelectService?: (serviceItem: any, category: 'furniture' | 'carpet' | 'mattress') => void;
 }
 
 export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
   currentLang,
   onOpenBooking,
-  onOpenCalculator
+  onOpenCalculator,
+  onSelectService
 }) => {
   const t = {
     fr: {
@@ -44,7 +46,7 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
       mattressTitle: '🛏️ Matelas & Désinfection',
       mattressSub: 'Élimination des acariens, bactéries et taches tenaces',
       ecoBadge: '100% Écologique & Sécuritaire pour enfants et animaux',
-      minNote: 'Minimum de service à domicile : 100 $ (Déplacement inclus à Drummondville)',
+      minNote: 'Déplacement inclus à Drummondville • Sans acompte',
       ctaEstimate: 'Estimer mes meubles',
       ctaBook: 'Réserver un nettoyage'
     },
@@ -60,7 +62,7 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
       mattressTitle: '🛏️ Матраци та Дезінфекція',
       mattressSub: 'Глибоке очищення від пилових кліщів, алергенів та плям',
       ecoBadge: '100% Еко-засоби, безпечно для дітей та домашніх тварин',
-      minNote: 'Мінімальне замовлення з виїздом : 100 $ (Виїзд по місту включено)',
+      minNote: 'Виїзд по місту включено • Без передплати',
       ctaEstimate: 'Розрахувати меблі',
       ctaBook: 'Замовити чистку'
     },
@@ -76,7 +78,7 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
       mattressTitle: '🛏️ Mattresses & Sanitization',
       mattressSub: 'Deep eradication of dust mites, allergens, and stubborn stains',
       ecoBadge: '100% Eco-friendly & safe for children and pets',
-      minNote: 'Mobile minimum service: $100 (Local travel included in Drummondville)',
+      minNote: 'Local travel included in Drummondville • No deposit required',
       ctaEstimate: 'Calculate Furniture Cost',
       ctaBook: 'Book at-home service'
     }
@@ -136,7 +138,14 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
             <div className="pt-5 mt-4 border-t border-[#1A3320]">
               <button
                 type="button"
-                onClick={onOpenBooking}
+                onClick={() => {
+                  if (onSelectService) {
+                    const standardSofa = FURNITURE_SERVICES.find(f => f.id === 'sofa_3') || FURNITURE_SERVICES[2];
+                    onSelectService(standardSofa, 'furniture');
+                  } else {
+                    onOpenBooking();
+                  }
+                }}
                 className="w-full py-3 rounded-xl bg-[#16A34A] hover:bg-[#22C55E] text-white font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
                 <span>{t.ctaBook}</span>
@@ -213,7 +222,14 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
             <div className="pt-5 mt-4 border-t border-[#1A3320]">
               <button
                 type="button"
-                onClick={onOpenBooking}
+                onClick={() => {
+                  if (onSelectService) {
+                    const standardMattress = MATTRESS_SERVICES.find(m => m.id === 'matelas_queen') || MATTRESS_SERVICES[2];
+                    onSelectService(standardMattress, 'mattress');
+                  } else {
+                    onOpenBooking();
+                  }
+                }}
                 className="w-full py-3 rounded-xl bg-[#16A34A] hover:bg-[#22C55E] text-white font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
                 <span>{t.ctaBook}</span>

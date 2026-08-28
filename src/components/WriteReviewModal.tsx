@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Language, AutoReviewItem } from '../types';
 import { DYNASTIE_INFO } from '../data/dynastieData';
+import { getApiUrl } from '../config/api';
 
 interface WriteReviewModalProps {
   isOpen: boolean;
@@ -37,6 +38,33 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
 
   if (!isOpen) return null;
 
+  const quickCategories = {
+    fr: [
+      '🚗 Auto / Berline',
+      '🚙 VUS / SUV',
+      '🛋️ Sofa & Divan',
+      '🧼 Tapis salon',
+      '🛏️ Matelas',
+      '🚛 Camion lourd'
+    ],
+    ua: [
+      '🚗 Легкове авто',
+      '🚙 Кросовер / VUS',
+      '🛋️ Диван та меблі',
+      '🧼 Килим',
+      '🛏️ Матрац',
+      '🚛 Тягач / Camion'
+    ],
+    en: [
+      '🚗 Sedan / Car',
+      '🚙 SUV / Crossover',
+      '🛋️ Couch & Sofa',
+      '🧼 Area Rug',
+      '🛏️ Mattress',
+      '🚛 Semi-Truck'
+    ]
+  }[currentLang];
+
   const t = {
     fr: {
       modalTitle: 'Donnez votre avis sur notre service',
@@ -46,8 +74,9 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
       namePlaceholder: 'ex. Patrick Bouchard',
       locationLabel: 'Ville / Région :',
       locationPlaceholder: 'ex. Drummondville, Saint-Cyrille...',
-      vehicleLabel: 'Véhicule ou Meuble nettoyé :',
-      vehiclePlaceholder: 'ex. Toyota RAV4, Divan 3 places, Tapis salon...',
+      vehicleLabel: 'Prestation réalisée :',
+      vehiclePlaceholder: 'ex. Toyota RAV4, Divan 3 places, Tapis...',
+      quickSelect: 'Sélection rapide :',
       textLabel: 'Votre commentaire d\'expérience :',
       textPlaceholder: 'Décrivez la qualité du nettoyage, la ponctualité, l\'état de votre véhicule ou mobilier après notre passage...',
       submitBtn: 'Publier mon avis',
@@ -67,8 +96,9 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
       namePlaceholder: 'напр. Максим Петренко',
       locationLabel: 'Місто / Населений пункт :',
       locationPlaceholder: 'напр. Drummondville, Saint-Cyrille...',
-      vehicleLabel: 'Автомобіль або меблі, що чистили :',
+      vehicleLabel: 'Послуга чи автомобіль :',
       vehiclePlaceholder: 'напр. Honda CR-V, Диван 3 місця, Килим...',
+      quickSelect: 'Швидкий вибір :',
       textLabel: 'Ваш відгук та враження :',
       textPlaceholder: 'Напишіть про якість хімчистки, пунктуальність, стан салону або меблів після роботи...',
       submitBtn: 'Опублікувати відгук',
@@ -88,8 +118,9 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
       namePlaceholder: 'e.g. Patrick Bouchard',
       locationLabel: 'City / Area:',
       locationPlaceholder: 'e.g. Drummondville, QC',
-      vehicleLabel: 'Vehicle or furniture cleaned:',
+      vehicleLabel: 'Service or cleaned item:',
       vehiclePlaceholder: 'e.g. Toyota RAV4, 3-Seat Sofa, Carpet...',
+      quickSelect: 'Quick select:',
       textLabel: 'Your feedback and comments:',
       textPlaceholder: 'Tell us about the cleaning quality, punctuality, and how your vehicle/furniture looks now...',
       submitBtn: 'Publish My Review',
@@ -103,37 +134,63 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
     }
   }[currentLang];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !reviewText.trim()) return;
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const newReviewItem: AutoReviewItem = {
-        id: `rev_user_${Date.now()}`,
-        name: name.trim(),
-        location: location.trim() || 'Drummondville, QC',
-        vehicle: vehicle.trim() || (currentLang === 'fr' ? 'Nettoyage professionnel' : currentLang === 'ua' ? 'Професійна хімчистка' : 'Professional detailing'),
-        rating: rating,
-        date: currentLang === 'fr' ? 'Aujourd\'hui' : currentLang === 'ua' ? 'Сьогодні' : 'Today',
-        service: {
-          fr: vehicle.trim() || 'Service MaxExpert360',
-          ua: vehicle.trim() || 'Послуга MaxExpert360',
-          en: vehicle.trim() || 'MaxExpert360 Service'
-        },
-        text: {
-          fr: reviewText.trim(),
-          ua: reviewText.trim(),
-          en: reviewText.trim()
-        },
-        verified: true
-      };
+    const vehicleCleaned = vehicle.trim() || (currentLang === 'fr' ? 'Nettoyage professionnel' : currentLang === 'ua' ? 'Професійна хімчистка' : 'Professional detailing');
+    const localLocation = location.trim() || 'Drummondville, QC';
 
-      onReviewSubmitted(newReviewItem);
-      setIsSubmitting(false);
-      setIsSubmitted(true);
-    }, 400);
+    const localReviewItem: AutoReviewItem = {
+      id: `rev_user_${Date.now()}`,
+      name: name.trim(),
+      location: localLocation,
+      vehicle: vehicleCleaned,
+      rating: rating,
+      date: currentLang === 'fr' ? 'Aujourd\'hui' : currentLang === 'ua' ? 'Сьогодні' : 'Today',
+      service: {
+        fr: vehicleCleaned,
+        ua: vehicleCleaned,
+        en: vehicleCleaned
+      },
+      text: {
+        fr: reviewText.trim(),
+        ua: reviewText.trim(),
+        en: reviewText.trim()
+      },
+      verified: true
+    };
+
+    try {
+      const res = await fetch(getApiUrl('/api/reviews'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          location: localLocation,
+          vehicle: vehicleCleaned,
+          rating,
+          text: reviewText.trim()
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.review) {
+          onReviewSubmitted(data.review);
+          setIsSubmitting(false);
+          setIsSubmitted(true);
+          return;
+        }
+      }
+    } catch {
+      // fallback to local handling
+    }
+
+    onReviewSubmitted(localReviewItem);
+    setIsSubmitting(false);
+    setIsSubmitted(true);
   };
 
   const handleResetAndClose = () => {
@@ -297,10 +354,31 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
 
               {/* Vehicle or Service */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <Car className="w-3.5 h-3.5 text-[#22C55E]" />
-                  <span>{t.vehicleLabel}</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Car className="w-3.5 h-3.5 text-[#22C55E]" />
+                    <span>{t.vehicleLabel}</span>
+                  </label>
+                  <span className="text-[10px] text-[#9CA3AF] font-mono">{t.quickSelect}</span>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pb-1">
+                  {quickCategories.map((catName) => (
+                    <button
+                      key={catName}
+                      type="button"
+                      onClick={() => setVehicle(catName)}
+                      className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                        vehicle === catName 
+                          ? 'bg-[#22C55E] text-black font-bold border-[#22C55E]' 
+                          : 'bg-[#122316] text-[#BBF7D0] border-[#22C55E]/30 hover:border-[#22C55E]'
+                      }`}
+                    >
+                      {catName}
+                    </button>
+                  ))}
+                </div>
+
                 <input
                   type="text"
                   value={vehicle}

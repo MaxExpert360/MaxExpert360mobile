@@ -10,33 +10,70 @@ import {
 import { REVIEWS_AUTO } from '../data/dynastieData';
 import { Language, AutoReviewItem } from '../types';
 import { WriteReviewModal } from './WriteReviewModal';
+import { getApiUrl } from '../config/api';
 
 interface ReviewsSectionProps {
   currentLang: Language;
+  onOpenWriteReview?: () => void;
 }
 
-export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ currentLang }) => {
+export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ currentLang, onOpenWriteReview }) => {
   const [isWriteModalOpen, setIsWriteModalOpen] = useState(false);
   const [reviewsList, setReviewsList] = useState<AutoReviewItem[]>(REVIEWS_AUTO);
 
-  // Load custom reviews from localStorage if any
+  // Load reviews from API and local storage
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('maxexpert_user_reviews');
-      if (saved) {
-        const parsed: AutoReviewItem[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setReviewsList([...parsed, ...REVIEWS_AUTO]);
+    let isMounted = true;
+
+    async function fetchReviews() {
+      try {
+        const res = await fetch(getApiUrl('/api/reviews'));
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.reviews) && data.reviews.length > 0) {
+            if (isMounted) {
+              setReviewsList([...data.reviews, ...REVIEWS_AUTO]);
+              return;
+            }
+          }
         }
+      } catch {
+        // Fall back to localStorage
       }
-    } catch {
-      // ignore JSON errors
+
+      try {
+        const saved = localStorage.getItem('maxexpert_user_reviews');
+        if (saved) {
+          const parsed: AutoReviewItem[] = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {
+            setReviewsList([...parsed, ...REVIEWS_AUTO]);
+          }
+        }
+      } catch {
+        // ignore JSON errors
+      }
     }
+
+    fetchReviews();
+
+    const handleCustomSubmit = (e: any) => {
+      if (e.detail && isMounted) {
+        handleReviewSubmitted(e.detail);
+      }
+    };
+    window.addEventListener('new_review_submitted', handleCustomSubmit);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('new_review_submitted', handleCustomSubmit);
+    };
   }, []);
 
   const handleReviewSubmitted = (newReview: AutoReviewItem) => {
     setReviewsList((prev) => {
-      const updated = [newReview, ...prev];
+      // deduplicate if same id
+      const filtered = prev.filter(r => r.id !== newReview.id);
+      const updated = [newReview, ...filtered];
       try {
         const userOnly = updated.filter(r => r.id.startsWith('rev_user_'));
         localStorage.setItem('maxexpert_user_reviews', JSON.stringify(userOnly));
@@ -45,6 +82,14 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ currentLang }) =
       }
       return updated;
     });
+  };
+
+  const handleTriggerWrite = () => {
+    if (onOpenWriteReview) {
+      onOpenWriteReview();
+    } else {
+      setIsWriteModalOpen(true);
+    }
   };
 
   const t = {
@@ -112,7 +157,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ currentLang }) =
             {/* Write Review Button */}
             <button
               type="button"
-              onClick={() => setIsWriteModalOpen(true)}
+              onClick={handleTriggerWrite}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#22C55E] hover:bg-[#1EA850] text-black font-heading font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-[#22C55E]/20 hover:scale-105 active:scale-95 cursor-pointer"
             >
               <Edit3 className="w-4 h-4" />
@@ -204,7 +249,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ currentLang }) =
 
           <button
             type="button"
-            onClick={() => setIsWriteModalOpen(true)}
+            onClick={handleTriggerWrite}
             className="px-6 py-2.5 rounded-xl bg-[#18331E] hover:bg-[#22C55E] text-[#86EFAC] hover:text-black border border-[#22C55E]/50 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap shadow-md flex items-center gap-2"
           >
             <Edit3 className="w-4 h-4" />

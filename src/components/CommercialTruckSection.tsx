@@ -20,6 +20,7 @@ import { Language } from '../types';
 interface CommercialTruckSectionProps {
   currentLang: Language;
   onOpenBooking: () => void;
+  onOpenCalculator?: () => void;
 }
 
 export const CommercialTruckSection: React.FC<CommercialTruckSectionProps> = ({

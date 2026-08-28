@@ -13,19 +13,30 @@ import { Footer } from './components/Footer';
 import { StickyContactBar } from './components/StickyContactBar';
 import { BookingModal } from './components/BookingModal';
 import { QuickCallbackModal } from './components/QuickCallbackModal';
+import { WriteReviewModal } from './components/WriteReviewModal';
 import { 
   AutoCalculatorState, 
   Language, 
-  VehicleCategory 
+  VehicleCategory,
+  BookingCart,
+  CartItem,
+  AutoReviewItem
 } from './types';
+import { DETAILING_PACKAGES } from './data/dynastieData';
+import { createDefaultCart, calculateCartSummary } from './services/squareBookings';
+import { calculateServicePrice } from './config/promotions';
 
 export function App() {
   const [currentLang, setCurrentLang] = useState<Language>('fr');
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isCallbackOpen, setIsCallbackOpen] = useState(false);
+  const [isWriteReviewOpen, setIsWriteReviewOpen] = useState(false);
   
   const [activeCategoryTab, setActiveCategoryTab] = useState<'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck'>('auto');
   
+  // Unified cart state across the entire session
+  const [cart, setCart] = useState<BookingCart>(createDefaultCart);
+
   // Custom calculator state passed to booking modal
   const [activeCalculatorState, setActiveCalculatorState] = useState<AutoCalculatorState>({
     vehicleCategory: 'suv',
@@ -45,12 +56,71 @@ export function App() {
     setIsCallbackOpen(true);
   };
 
+  const handleOpenWriteReview = () => {
+    setIsWriteReviewOpen(true);
+  };
+
   const handleSelectPackageFromCards = (pkgId: string, category: VehicleCategory) => {
     setActiveCalculatorState(prev => ({
       ...prev,
       packageId: pkgId,
       vehicleCategory: category
     }));
+
+    const pkg = DETAILING_PACKAGES.find(p => p.id === pkgId) || DETAILING_PACKAGES[1];
+    const catKey = category as 'auto' | 'suv' | 'truck_van';
+    const rawPrice = pkg.prices[catKey] || pkg.prices.auto;
+    const priceInfo = calculateServicePrice(rawPrice, category);
+    const price = priceInfo.finalPrice;
+    const catLabel = {
+      fr: category === 'auto' ? 'Auto / Berline' : category === 'suv' ? 'VUS / SUV' : 'Camionnette / Van',
+      ua: category === 'auto' ? 'Легкове авто / Седан' : category === 'suv' ? 'Кросовер / VUS' : 'Пікап / Вен',
+      en: category === 'auto' ? 'Car / Sedan' : category === 'suv' ? 'SUV / Crossover' : 'Truck / Van'
+    };
+
+    // Update auto package item in cart while preserving extras
+    const nonAutoItems = cart.items.filter(it => it.category !== 'auto');
+    const autoItem: CartItem = {
+      id: `${pkg.id}_${category}`,
+      category: 'auto',
+      name: pkg.title,
+      details: catLabel,
+      quantity: 1,
+      unitPrice: price,
+      totalPrice: price
+    };
+
+    const newCart = calculateCartSummary([autoItem, ...nonAutoItems], 'auto');
+    setCart(newCart);
+    setActiveEstimatedPrice(newCart.totalPrice);
+    setIsBookingOpen(true);
+  };
+
+  const handleSelectServiceFromSection = (serviceItem: any, category: 'furniture' | 'carpet' | 'mattress') => {
+    const cartItem: CartItem = {
+      id: serviceItem.id,
+      category,
+      name: serviceItem.name,
+      details: {
+        fr: category === 'furniture' ? 'Meuble / Divan' : category === 'carpet' ? 'Tapis / Moquette' : 'Matelas',
+        ua: category === 'furniture' ? 'Меблі / Диван' : category === 'carpet' ? 'Килим' : 'Матрац',
+        en: category === 'furniture' ? 'Furniture / Sofa' : category === 'carpet' ? 'Carpet' : 'Mattress'
+      },
+      quantity: 1,
+      unitPrice: serviceItem.price,
+      totalPrice: serviceItem.price
+    };
+
+    const newCart = calculateCartSummary([cartItem], category);
+    setCart(newCart);
+    setActiveEstimatedPrice(newCart.totalPrice);
+    setIsBookingOpen(true);
+  };
+
+  const handleOpenBookingWithCart = (newCart: BookingCart, state: AutoCalculatorState) => {
+    setCart(newCart);
+    setActiveCalculatorState(state);
+    setActiveEstimatedPrice(newCart.totalPrice);
     setIsBookingOpen(true);
   };
 
@@ -79,6 +149,7 @@ export function App() {
         onLanguageChange={setCurrentLang}
         onOpenBooking={handleOpenBooking}
         onOpenCallback={handleOpenCallback}
+        onOpenWriteReview={handleOpenWriteReview}
       />
 
       {/* Main Page Flow */}
@@ -89,6 +160,7 @@ export function App() {
           currentLang={currentLang}
           onOpenBooking={handleOpenBooking}
           onOpenCalculator={scrollToCalculator}
+          onOpenWriteReview={handleOpenWriteReview}
         />
 
         {/* TOP PRIORITY: Interactive Booking Configurator & Instant Price Calculator */}
@@ -96,7 +168,9 @@ export function App() {
           currentLang={currentLang}
           activeCategoryTab={activeCategoryTab}
           onCategoryTabChange={setActiveCategoryTab}
+          onOpenBookingWithCart={handleOpenBookingWithCart}
           onOpenBookingWithDetails={handleOpenBookingWithDetails}
+          onCartChange={setCart}
         />
 
         {/* 1. Automotive Packages (Express 99/119/139, Complet 149/179/209, Remise à Neuf 199/239/269) */}
@@ -110,6 +184,7 @@ export function App() {
           currentLang={currentLang}
           onOpenBooking={handleOpenBooking}
           onOpenCalculator={() => scrollToCalculator('furniture')}
+          onSelectService={handleSelectServiceFromSection}
         />
 
         {/* 3. Commercial & Heavy Trucks Section (Sleeper cab 220$, RVs 180$, Fleets) */}
@@ -128,6 +203,7 @@ export function App() {
         {/* 7. Verified Client Reviews in Drummondville */}
         <ReviewsSection 
           currentLang={currentLang}
+          onOpenWriteReview={handleOpenWriteReview}
         />
 
         {/* 8. FAQ Accordion */}
@@ -158,6 +234,8 @@ export function App() {
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
         currentLang={currentLang}
+        initialCart={cart}
+        onCartUpdate={setCart}
         initialState={activeCalculatorState}
         initialEstimatedPrice={activeEstimatedPrice}
       />
@@ -167,6 +245,17 @@ export function App() {
         isOpen={isCallbackOpen}
         onClose={() => setIsCallbackOpen(false)}
         currentLang={currentLang}
+      />
+
+      {/* Write Client Review Modal */}
+      <WriteReviewModal 
+        isOpen={isWriteReviewOpen}
+        onClose={() => setIsWriteReviewOpen(false)}
+        currentLang={currentLang}
+        onReviewSubmitted={(newRev: AutoReviewItem) => {
+          // Broadcast so ReviewsSection updates instantly
+          window.dispatchEvent(new CustomEvent('new_review_submitted', { detail: newRev }));
+        }}
       />
 
     </div>

@@ -159,29 +159,113 @@ export interface DetailingFaqItem {
   category: 'mobile' | 'pricing' | 'furniture' | 'care';
 }
 
+export interface CartItem {
+  id: string;
+  category: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck' | 'extra';
+  name: {
+    fr: string;
+    ua: string;
+    en: string;
+  };
+  details?: {
+    fr?: string;
+    ua?: string;
+    en?: string;
+  };
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface BookingCart {
+  items: CartItem[];
+  subtotal: number;
+  travelFee: number;
+  minimumAdjustment: number;
+  totalPrice: number;
+  estimatedDuration: {
+    fr: string;
+    ua: string;
+    en: string;
+  };
+  activeCategory?: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck' | 'extra' | 'multi';
+}
+
 export interface AutoCalculatorState {
   vehicleCategory: VehicleCategory;
   packageId: string;
+  feetLength?: number;
   carpetSqFt?: number;
   selectedExtras: string[];
   serviceLocation: 'mobile' | 'workshop';
+  frequencyDiscount?: string;
+}
+
+export interface ParsedAddressDetails {
+  placeId: string;
+  place_id?: string;
+  formattedAddress: string;
+  formatted_address?: string;
+  streetNumber: string;
+  street_number?: string;
+  streetName: string;
+  route?: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  postal_code?: string;
+  googlePostalCode?: string;
+  confirmedPostalCode?: string;
+  postalCodeSource?: 'manual' | 'google';
+  postalCodeStatus?: 'suggested' | 'manually_confirmed' | 'externally_verified';
+  country: string;
+  latitude: number;
+  longitude: number;
+  hasValidPostalCode: boolean;
+  isVerified?: boolean;
+  placeDetailsPostalCode?: string;
+  geocodingPostalCode?: string;
+  postalCodeMismatch?: boolean;
+  postalCodeErrorMessage?: string;
 }
 
 export interface AutoBookingFormData {
   vehicleCategory: VehicleCategory;
   vehicleMakeModel: string;
+  vehicleYear?: string;
   packageId: string;
+  feetLength?: number;
   selectedExtras: string[];
   serviceLocation: 'mobile' | 'workshop';
-  address: string;
-  city: string;
-  date: string;
-  timeSlot: string;
+  serviceAddress: string;
+  address?: string;
+  formattedAddress?: string;
+  streetNumber?: string;
+  street?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  googlePostalCode?: string;
+  confirmedPostalCode?: string;
+  postalCodeSource?: 'manual' | 'google';
+  postalCodeStatus?: 'suggested' | 'manually_confirmed' | 'externally_verified';
+  country?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  placeId?: string;
+  googlePlaceId?: string;
+  addressVerified?: boolean;
+  addressValidated?: boolean;
+  addressDetails?: ParsedAddressDetails;
+  preferredDate: string;
+  preferredTimeSlot: 'morning' | 'afternoon' | 'flexible';
   clientName: string;
-  phone: string;
-  email: string;
-  contactMethod: 'phone' | 'sms' | 'facebook' | 'email';
-  comments: string;
-  totalPrice: number;
+  clientPhone: string;
+  clientEmail: string;
+  notes: string;
+  contactMethod?: 'phone' | 'sms' | 'facebook' | 'email';
+  totalPrice?: number;
+  selectedRewardId?: string;
+  rewardDiscount?: number;
 }
 

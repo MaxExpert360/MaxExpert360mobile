@@ -19,7 +19,9 @@ import {
 import { 
   AutoCalculatorState, 
   Language, 
-  VehicleCategory 
+  VehicleCategory,
+  BookingCart,
+  CartItem
 } from '../types';
 import { 
   DETAILING_PACKAGES, 
@@ -30,10 +32,18 @@ import {
   TRUCK_RV_SERVICES,
   DYNASTIE_INFO 
 } from '../data/dynastieData';
+import { calculateCartSummary } from '../services/squareBookings';
+import { 
+  AUTO_LAUNCH_PROMO, 
+  isAutoPromoActive, 
+  calculateServicePrice 
+} from '../config/promotions';
 
 interface CostCalculatorProps {
   currentLang: Language;
-  onOpenBookingWithDetails: (state: AutoCalculatorState, estimatedPrice: number) => void;
+  onOpenBookingWithDetails?: (state: AutoCalculatorState, estimatedPrice: number) => void;
+  onOpenBookingWithCart?: (cart: BookingCart, state: AutoCalculatorState) => void;
+  onCartChange?: (cart: BookingCart) => void;
   activeCategoryTab?: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck';
   onCategoryTabChange?: (tab: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck') => void;
 }
@@ -41,6 +51,8 @@ interface CostCalculatorProps {
 export const CostCalculator: React.FC<CostCalculatorProps> = ({
   currentLang,
   onOpenBookingWithDetails,
+  onOpenBookingWithCart,
+  onCartChange,
   activeCategoryTab,
   onCategoryTabChange
 }) => {
@@ -99,7 +111,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       totalEstimated: 'Total estimé :',
       estimatedTime: 'Durée indicative :',
       btnBookThis: 'Réserver cette prestation',
-      minNotice: 'Minimum de service à domicile : 100 $ (Déplacement à Drummondville inclus)',
+      minNotice: 'Déplacement à Drummondville inclus • Sans frais cachés ni acompte',
       disclaimer: 'Paiement sans surprise après l\'inspection de votre satisfaction. Produits 100% écologiques.'
     },
     ua: {
@@ -125,7 +137,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       totalEstimated: 'Разом до сплати :',
       estimatedTime: 'Орієнтовний час :',
       btnBookThis: 'Забронювати замовлення',
-      minNotice: 'Мінімальне замовлення з виїздом : 100 $ (Виїзд по місту включено)',
+      minNotice: 'Виїзд по Драммондвілю включено • Без передплати та прихованих доплат',
       disclaimer: 'Оплата після перевірки результату. 100% екологічні та безпечні засоби.'
     },
     en: {
@@ -151,7 +163,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       totalEstimated: 'Total Estimate :',
       estimatedTime: 'Estimated time :',
       btnBookThis: 'Book this service',
-      minNotice: 'Mobile service minimum: $100 (Drummondville local travel included)',
+      minNotice: 'Local travel included in Drummondville • No deposit required',
       disclaimer: 'Payment upon satisfaction inspection. 100% eco-friendly and pet-safe products.'
     }
   }[currentLang];
@@ -167,7 +179,9 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       const selectedPkg = DETAILING_PACKAGES.find(p => p.id === calcState.packageId) || DETAILING_PACKAGES[1];
       mainName = selectedPkg.title[currentLang];
       const vehicleKey = calcState.vehicleCategory as 'auto' | 'suv' | 'truck_van';
-      basePrice = selectedPkg.prices[vehicleKey] || selectedPkg.prices.auto;
+      const rawPrice = selectedPkg.prices[vehicleKey] || selectedPkg.prices.auto;
+      const priceInfo = calculateServicePrice(rawPrice, calcState.vehicleCategory);
+      basePrice = priceInfo.finalPrice;
       duration = selectedPkg.duration[currentLang];
 
       extrasSum = calcState.selectedExtras.reduce((sum, extraId) => {
@@ -204,8 +218,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
     }
 
     const calculatedTotal = basePrice + extrasSum;
-    const finalDisplayTotal = activeTab === 'auto' ? calculatedTotal : Math.max(100, calculatedTotal);
-    const hasMinApplied = activeTab !== 'auto' && calculatedTotal < 100 && calculatedTotal > 0;
+    const finalDisplayTotal = calculatedTotal;
+    const hasMinApplied = false;
 
     return {
       mainName,
@@ -217,6 +231,158 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       duration
     };
   }, [activeTab, calcState, selectedFurniture, carpetSqFt, carpetStairsCount, selectedMattress, selectedTruckId, currentLang]);
+
+  // Compute unified BookingCart
+  const currentCart = useMemo<BookingCart>(() => {
+    const items: CartItem[] = [];
+
+    if (activeTab === 'auto') {
+      const selectedPkg = DETAILING_PACKAGES.find(p => p.id === calcState.packageId) || DETAILING_PACKAGES[1];
+      const vehicleKey = calcState.vehicleCategory as 'auto' | 'suv' | 'truck_van';
+      const catLabel = {
+        fr: calcState.vehicleCategory === 'auto' ? 'Auto / Berline' : calcState.vehicleCategory === 'suv' ? 'VUS / SUV' : 'Camionnette / Van',
+        ua: calcState.vehicleCategory === 'auto' ? 'Легкове авто / Седан' : calcState.vehicleCategory === 'suv' ? 'Кросовер / VUS' : 'Пікап / Вен',
+        en: calcState.vehicleCategory === 'auto' ? 'Car / Sedan' : calcState.vehicleCategory === 'suv' ? 'SUV / Crossover' : 'Truck / Van'
+      };
+      const rawPrice = selectedPkg.prices[vehicleKey] || selectedPkg.prices.auto;
+      const priceInfo = calculateServicePrice(rawPrice, calcState.vehicleCategory);
+      const pkgPrice = priceInfo.finalPrice;
+
+      items.push({
+        id: `${selectedPkg.id}_${calcState.vehicleCategory}`,
+        category: 'auto',
+        name: selectedPkg.title,
+        details: catLabel,
+        quantity: 1,
+        unitPrice: pkgPrice,
+        totalPrice: pkgPrice
+      });
+
+      calcState.selectedExtras.forEach(extraId => {
+        const extra = EXTRA_SERVICES.find(e => e.id === extraId);
+        if (extra) {
+          items.push({
+            id: extra.id,
+            category: 'extra',
+            name: extra.name,
+            details: {
+              fr: 'Option supplémentaire',
+              ua: 'Додаткова опція',
+              en: 'Add-on option'
+            },
+            quantity: 1,
+            unitPrice: extra.price,
+            totalPrice: extra.price
+          });
+        }
+      });
+    } else if (activeTab === 'furniture') {
+      Object.entries(selectedFurniture).forEach(([id, qty]) => {
+        const quantity = Number(qty) || 0;
+        if (quantity > 0) {
+          const item = FURNITURE_SERVICES.find(f => f.id === id);
+          if (item) {
+            items.push({
+              id: item.id,
+              category: 'furniture',
+              name: item.name,
+              details: {
+                fr: 'Nettoyage & Extraction à l\'eau chaude',
+                ua: 'Хімчистка та гаряча екстракція',
+                en: 'Hot water deep extraction'
+              },
+              quantity,
+              unitPrice: item.price,
+              totalPrice: item.price * quantity
+            });
+          }
+        }
+      });
+    } else if (activeTab === 'carpet') {
+      if (carpetSqFt > 0) {
+        const carpetCost = Math.round(carpetSqFt * 0.30);
+        items.push({
+          id: 'carpet_sqft',
+          category: 'carpet',
+          name: {
+            fr: `Nettoyage Tapis & Moquette (${carpetSqFt} pi²)`,
+            ua: `Хімчистка килима (${carpetSqFt} кв.фут)`,
+            en: `Carpet Deep Cleaning (${carpetSqFt} sq.ft)`
+          },
+          details: {
+            fr: `${carpetSqFt} pi² à 0,30 $/pi²`,
+            ua: `${carpetSqFt} кв.ф по 0,30 $/кв.ф`,
+            en: `${carpetSqFt} sq.ft at $0.30/sq.ft`
+          },
+          quantity: 1,
+          unitPrice: carpetCost,
+          totalPrice: carpetCost
+        });
+      }
+      if (carpetStairsCount > 0) {
+        items.push({
+          id: 'carpet_stairs',
+          category: 'carpet',
+          name: {
+            fr: 'Escalier moquetté complet (marches & contremarches)',
+            ua: 'Килимові сходи (повний сходовий марш)',
+            en: 'Full Carpeted Stairs (steps & risers)'
+          },
+          details: {
+            fr: `${carpetStairsCount} escalier(s) complet(s)`,
+            ua: `${carpetStairsCount} сходовий(і) марш(і)`,
+            en: `${carpetStairsCount} stair flight(s)`
+          },
+          quantity: carpetStairsCount,
+          unitPrice: 120,
+          totalPrice: 120 * carpetStairsCount
+        });
+      }
+    } else if (activeTab === 'mattress') {
+      Object.entries(selectedMattress).forEach(([id, qty]) => {
+        const quantity = Number(qty) || 0;
+        if (quantity > 0) {
+          const item = MATTRESS_SERVICES.find(m => m.id === id);
+          if (item) {
+            items.push({
+              id: item.id,
+              category: 'mattress',
+              name: item.name,
+              details: {
+                fr: 'Désinfection & Élimination acariens',
+                ua: 'Дезінфекція та захист від пилових кліщів',
+                en: 'Deep sanitization & anti-mite'
+              },
+              quantity,
+              unitPrice: item.price,
+              totalPrice: item.price * quantity
+            });
+          }
+        }
+      });
+    } else if (activeTab === 'truck') {
+      const truckItem = TRUCK_RV_SERVICES.find(t => t.id === selectedTruckId) || TRUCK_RV_SERVICES[0];
+      const truckPrice = truckItem.id === 'truck_sleeper' ? 220 : truckItem.id === 'truck_daycab' ? 140 : 180;
+      items.push({
+        id: truckItem.id,
+        category: 'truck',
+        name: truckItem.name,
+        details: truckItem.description,
+        quantity: 1,
+        unitPrice: truckPrice,
+        totalPrice: truckPrice
+      });
+    }
+
+    return calculateCartSummary(items, activeTab);
+  }, [activeTab, calcState, selectedFurniture, carpetSqFt, carpetStairsCount, selectedMattress, selectedTruckId]);
+
+  // Keep parent cart state in sync
+  React.useEffect(() => {
+    if (onCartChange) {
+      onCartChange(currentCart);
+    }
+  }, [currentCart, onCartChange]);
 
   const handleToggleExtra = (extraId: string) => {
     setCalcState(prev => {
@@ -231,7 +397,11 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
   };
 
   const handleBook = () => {
-    onOpenBookingWithDetails(calcState, calculation.finalDisplayTotal);
+    if (onOpenBookingWithCart) {
+      onOpenBookingWithCart(currentCart, calcState);
+    } else if (onOpenBookingWithDetails) {
+      onOpenBookingWithDetails(calcState, calculation.finalDisplayTotal);
+    }
   };
 
   return (
