@@ -1,6 +1,7 @@
 import { BookingCart, AutoBookingFormData, Language, CartItem } from '../types';
 import { DYNASTIE_INFO } from '../data/dynastieData';
 import { getApiUrl } from '../config/api';
+import { getLocalizedSlotLabel, validateBookingSchedule } from '../config/bookingSchedule';
 
 export interface SquareApiErrorDetail {
   category: string;
@@ -180,11 +181,7 @@ export function generateOrderSummaryText(
     if (customerData.clientEmail) lines.push(`Courriel: ${customerData.clientEmail}`);
     if (customerData.serviceAddress) lines.push(`Adresse: ${customerData.serviceAddress}`);
     if (customerData.preferredDate) {
-      const slotStr = customerData.preferredTimeSlot === 'morning' 
-        ? (isFr ? 'Matin (8h-12h)' : 'Morning') 
-        : customerData.preferredTimeSlot === 'afternoon' 
-        ? (isFr ? 'Après-midi (13h-17h)' : 'Afternoon') 
-        : (isFr ? 'Flexible' : 'Flexible');
+      const slotStr = getLocalizedSlotLabel(customerData.preferredDate, customerData.preferredTimeSlot, lang);
       lines.push(`Date: ${customerData.preferredDate} (${slotStr})`);
     }
     if (customerData.vehicleMakeModel) {
@@ -258,8 +255,11 @@ export function createSquareBookingApiPayload(
 
   let startAt: string | undefined = undefined;
   if (customerData.preferredDate) {
-    const timeHour = customerData.preferredTimeSlot === 'morning' ? '09:00:00' : '13:30:00';
-    startAt = `${customerData.preferredDate}T${timeHour}-04:00`;
+    const validated = validateBookingSchedule(customerData.preferredDate, customerData.preferredTimeSlot);
+    if (!validated.isValid) {
+      throw new Error(validated.error?.fr || 'Créneau horaire non disponible pour cette date.');
+    }
+    startAt = validated.startAtIso;
   }
 
   return {

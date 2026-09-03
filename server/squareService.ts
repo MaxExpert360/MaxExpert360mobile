@@ -1,6 +1,7 @@
 import { resolveServiceVariation, LiveSquareVariation } from './squareCatalogMapping';
 import { customerDb } from './customerDb';
 import { googleMapsService } from './mapsService';
+import { validateBookingSchedule } from './bookingSchedule';
 
 /**
  * Interface for Square API Booking Payload & Responses
@@ -15,7 +16,7 @@ export interface BookingRequestInput {
   googlePostalCode?: string;
   postalCodeSource?: 'manual' | 'google';
   preferredDate: string; // YYYY-MM-DD
-  preferredTimeSlot: 'morning' | 'afternoon' | 'flexible';
+  preferredTimeSlot: string;
   vehicleMakeModel?: string;
   notes?: string;
   cart: {
@@ -768,6 +769,23 @@ export class SquareBookingsService {
       );
     }
 
+    // Pre-flight Schedule Availability Validation (America/Toronto timezone)
+    const effectiveTimeSlot = String(input.preferredTimeSlot || '').trim();
+    const scheduleCheck = validateBookingSchedule(input.preferredDate, effectiveTimeSlot);
+    if (!scheduleCheck.isValid || !scheduleCheck.startAtIso) {
+      const lang = input.language || 'fr';
+      const msg = scheduleCheck.error?.[lang] || scheduleCheck.error?.fr || 'Créneau horaire non disponible pour cette date.';
+      const err: any = new Error(msg);
+      err.isValidationError = true;
+      err.squareErrors = [{
+        category: 'SCHEDULE_AVAILABILITY_ERROR',
+        code: 'TIME_SLOT_UNAVAILABLE',
+        detail: msg,
+        field: 'preferredTimeSlot'
+      }];
+      throw err;
+    }
+
     // 1. Resolve Location ID
     const locationId = await this.getEffectiveLocationId();
 
@@ -803,12 +821,17 @@ export class SquareBookingsService {
     const itemNamesFormatted: string[] = [];
 
     for (const item of input.cart.items) {
-      const resolved = resolveServiceVariation(item.id, item.category, liveCatalog, primaryTeamMemberId);
+      const itemId = (item as any).id || (item as any).serviceId || '';
+      const itemCategory = (item as any).category || 'auto';
+      const resolved = resolveServiceVariation(itemId, itemCategory, liveCatalog, primaryTeamMemberId);
       const segmentDuration = Math.max(30, (resolved.durationMinutes || 90) * (item.quantity || 1));
 
       const langKey = input.language || 'fr';
-      const displayName = item.name[langKey] || item.name.fr;
-      itemNamesFormatted.push(`${displayName} (x${item.quantity}) - ${item.totalPrice} $`);
+      const displayName = typeof item.name === 'object' && item.name !== null
+        ? ((item.name as any)[langKey] || (item.name as any).fr || 'Service')
+        : (item.name || (item as any).serviceName || 'Service');
+      const itemPrice = item.totalPrice ?? (item as any).finalPrice ?? (item as any).basePrice ?? 0;
+      itemNamesFormatted.push(`${displayName} (x${item.quantity || 1}) - ${itemPrice} $`);
 
       // Verify that team_member_id is bookable
       const finalTeamMemberId = resolved.teamMemberId || primaryTeamMemberId;
@@ -834,22 +857,19 @@ export class SquareBookingsService {
       }
     }
 
-    // 5. Calculate precise start time in ISO 8601 (Eastern Time Montreal/Drummondville UTC-4)
-    let timeStr = '09:00:00';
-    if (input.preferredTimeSlot === 'afternoon') {
-      timeStr = '13:30:00';
-    } else if (input.preferredTimeSlot === 'flexible') {
-      timeStr = '10:30:00';
-    }
-
-    const startAt = `${input.preferredDate}T${timeStr}-04:00`;
+    // 5. Calculate precise start time in ISO 8601 (Eastern Time Montreal/Drummondville America/Toronto)
+    const startAt = scheduleCheck.startAtIso;
 
     // 6. Detailed notes for Square appointment
+    const calculatedTotal = input.cart.totalPrice ?? (input.cart as any).summary?.finalPrice ?? (input.cart as any).total ?? (
+      input.cart.items.reduce((sum, item) => sum + (item.totalPrice ?? (item as any).finalPrice ?? (item as any).basePrice ?? 0), 0)
+    );
+
     const customerNote = [
       `=== MAXEXPERT360 SERVICE MOBILE ===`,
       `Prestations demandées :`,
       ...itemNamesFormatted.map(name => `• ${name}`),
-      `Total Estimé : ${input.cart.totalPrice} $ CAD`,
+      `Total Estimé : ${calculatedTotal} $ CAD`,
       input.vehicleMakeModel ? `Véhicule/Meuble : ${input.vehicleMakeModel}` : '',
       input.notes ? `Instructions : ${input.notes}` : ''
     ].filter(Boolean).join('\n');
@@ -858,7 +878,7 @@ export class SquareBookingsService {
       `Adresse intervention : ${input.serviceAddress}`,
       `Client : ${input.clientName} (${input.clientPhone})`,
       `Créneau souhaité : ${input.preferredTimeSlot}`,
-      `Total Devis : ${input.cart.totalPrice} $ CAD (Déplacement inclus Drummondville)`
+      `Total Devis : ${calculatedTotal} $ CAD (Déplacement inclus Drummondville)`
     ].join('\n');
 
     // 7. Prepare Complete Booking Payload

@@ -40,6 +40,12 @@ import {
   DYNASTIE_INFO
 } from '../data/dynastieData';
 import {
+  getScheduleRuleForDate,
+  getTimeSlotOptionsForDate,
+  validateBookingSchedule,
+  getLocalizedSlotLabel
+} from '../config/bookingSchedule';
+import {
   submitRealSquareBooking,
   checkSquareServerStatus,
   generateOrderSummaryText,
@@ -150,7 +156,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     serviceAddress: '',
     postalCode: '',
     preferredDate: '',
-    preferredTimeSlot: 'morning',
+    preferredTimeSlot: '',
     clientName: '',
     clientPhone: '',
     clientEmail: '',
@@ -739,6 +745,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         return false;
       }
 
+      // Schedule availability validation (America/Toronto)
+      const scheduleValidation = validateBookingSchedule(formData.preferredDate, formData.preferredTimeSlot);
+      if (!scheduleValidation.isValid) {
+        const errorMsg = scheduleValidation.error?.[currentLang] || scheduleValidation.error?.fr || 'Ce créneau horaire n\'est pas disponible pour cette date.';
+        triggerValidation('preferredTimeSlot', 'booking-field-timeslot', errorMsg);
+        return false;
+      }
+
       // Dynamic Category-Specific Fields Validation
       if (hasAutoInCart && !vehicleMakeModelInput.trim()) {
         triggerValidation('vehicleMakeModel', 'booking-field-vehicle-desc', 'Veuillez préciser la marque, le modèle et l\'année du véhicule.');
@@ -918,9 +932,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       postalCodePlaceholder: 'ex: J2C 1A1',
       dateLabel: 'Date souhaitée *',
       timeSlotLabel: 'Créneau horaire souhaité *',
-      slotMorning: 'Matin (8h00 - 12h00)',
-      slotAfternoon: 'Après-midi (13h00 - 17h00)',
-      slotFlexible: 'Flexible / À convenir',
       notesLabel: 'Notes particulières (taches tenaces, stationnement, etc.)',
       subtotalLabel: 'Sous-total des prestations :',
       totalEstimated: 'Total estimé :',
@@ -978,9 +989,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       postalCodePlaceholder: 'напр: J2C 1A1',
       dateLabel: 'Бажана дата *',
       timeSlotLabel: 'Бажаний час *',
-      slotMorning: 'Ранок (8:00 - 12:00)',
-      slotAfternoon: 'День (13:00 - 17:00)',
-      slotFlexible: 'Гнучкий графік',
       notesLabel: 'Особливі побажання',
       subtotalLabel: 'Підсумок послуг :',
       totalEstimated: 'Загальна вартість :',
@@ -1038,9 +1046,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       postalCodePlaceholder: 'e.g., J2C 1A1',
       dateLabel: 'Preferred Date *',
       timeSlotLabel: 'Preferred Time Slot *',
-      slotMorning: 'Morning (8:00 AM - 12:00 PM)',
-      slotAfternoon: 'Afternoon (1:00 PM - 5:00 PM)',
-      slotFlexible: 'Flexible / To be agreed',
       notesLabel: 'Special instructions (parking, stains, etc.)',
       subtotalLabel: 'Services Subtotal :',
       totalEstimated: 'Total Estimate :',
@@ -1816,56 +1821,89 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               )}
 
               {/* Date & Time Slot Selection */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-mono font-bold text-[#D1D5DB] mb-1.5 uppercase">
-                    {t.dateLabel}
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#22C55E]">
-                      <Calendar className="w-4 h-4" />
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-mono font-bold text-[#D1D5DB] mb-1.5 uppercase">
+                      {t.dateLabel}
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#22C55E]">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <input
+                        id="booking-field-date"
+                        type="date"
+                        min={new Date().toISOString().split('T')[0]}
+                        value={formData.preferredDate}
+                        onChange={(e) => {
+                          const newDate = e.target.value;
+                          const newSlotOptions = getTimeSlotOptionsForDate(newDate);
+
+                          setFormData(prev => ({
+                            ...prev,
+                            preferredDate: newDate,
+                            preferredTimeSlot: newSlotOptions[0]?.value || ''
+                          }));
+
+                          if (
+                            validationError?.field === 'preferredDate' ||
+                            validationError?.field === 'preferredTimeSlot'
+                          ) {
+                            setValidationError(null);
+                          }
+                        }}
+                        className={`w-full bg-[#080E0A] rounded-xl pl-10 pr-3 py-2.5 text-sm text-white focus:outline-none transition-all ${
+                          validationError?.field === 'preferredDate'
+                            ? 'border-2 border-red-500 bg-red-950/20'
+                            : 'border border-[#203926] focus:border-[#22C55E]'
+                        }`}
+                      />
                     </div>
-                    <input
-                      id="booking-field-date"
-                      type="date"
-                      min={new Date().toISOString().split('T')[0]}
-                      value={formData.preferredDate}
-                      onChange={(e) => {
-                        setFormData(prev => ({ ...prev, preferredDate: e.target.value }));
-                        if (validationError?.field === 'preferredDate') setValidationError(null);
-                      }}
-                      className={`w-full bg-[#080E0A] rounded-xl pl-10 pr-3 py-2.5 text-sm text-white focus:outline-none transition-all ${
-                        validationError?.field === 'preferredDate'
-                          ? 'border-2 border-red-500 bg-red-950/20'
-                          : 'border border-[#203926] focus:border-[#22C55E]'
-                      }`}
-                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-mono font-bold text-[#D1D5DB] mb-1.5 uppercase">
+                      {t.timeSlotLabel}
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#22C55E]">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <select
+                        id="booking-field-timeslot"
+                        value={formData.preferredTimeSlot}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, preferredTimeSlot: e.target.value }));
+                          if (validationError?.field === 'preferredTimeSlot') setValidationError(null);
+                        }}
+                        className={`w-full bg-[#080E0A] rounded-xl pl-10 pr-3 py-2.5 text-sm text-white focus:border-[#22C55E] focus:outline-none transition-all ${
+                          validationError?.field === 'preferredTimeSlot'
+                            ? 'border-2 border-red-500 bg-red-950/20'
+                            : 'border border-[#203926]'
+                        }`}
+                      >
+                        {getTimeSlotOptionsForDate(formData.preferredDate).map(opt => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label[currentLang] || opt.label.fr}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-mono font-bold text-[#D1D5DB] mb-1.5 uppercase">
-                    {t.timeSlotLabel}
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#22C55E]">
-                      <Clock className="w-4 h-4" />
+                {/* Availability Notice Banner */}
+                {formData.preferredDate && (() => {
+                  const scheduleRule = getScheduleRuleForDate(formData.preferredDate);
+                  if (!scheduleRule) return null;
+                  return (
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#0F2013] border border-[#22C55E]/40 text-xs text-[#86EFAC]">
+                      <Clock className="w-4 h-4 text-[#22C55E] shrink-0" />
+                      <span>{scheduleRule.availableNotice[currentLang] || scheduleRule.availableNotice.fr}</span>
                     </div>
-                    <select
-                      id="booking-field-timeslot"
-                      value={formData.preferredTimeSlot}
-                      onChange={(e) => {
-                        setFormData(prev => ({ ...prev, preferredTimeSlot: e.target.value as any }));
-                        if (validationError?.field === 'preferredTimeSlot') setValidationError(null);
-                      }}
-                      className="w-full bg-[#080E0A] rounded-xl pl-10 pr-3 py-2.5 text-sm text-white border border-[#203926] focus:border-[#22C55E] focus:outline-none"
-                    >
-                      <option value="morning">{t.slotMorning}</option>
-                      <option value="afternoon">{t.slotAfternoon}</option>
-                      <option value="flexible">{t.slotFlexible}</option>
-                    </select>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
 
               {/* Notes */}
@@ -1910,7 +1948,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       Code postal : {postalCodeInput || formData.confirmedPostalCode || formData.postalCode}
                     </div>
                     <div className="text-[#D1D5DB] mt-0.5">
-                      {formData.preferredDate} ({formData.preferredTimeSlot === 'morning' ? t.slotMorning : formData.preferredTimeSlot === 'afternoon' ? t.slotAfternoon : t.slotFlexible})
+                      {formData.preferredDate} ({getLocalizedSlotLabel(formData.preferredDate, formData.preferredTimeSlot, currentLang)})
                     </div>
                   </div>
                 </div>

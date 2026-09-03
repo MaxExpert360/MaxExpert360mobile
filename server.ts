@@ -7,6 +7,7 @@ import { customerDb } from './server/customerDb';
 import { googleMapsService } from './server/mapsService';
 import { smsService } from './server/smsService';
 import { reviewsDb } from './server/reviewsDb';
+import { validateBookingSchedule } from './server/bookingSchedule';
 
 dotenv.config();
 
@@ -536,6 +537,42 @@ async function startServer() {
         });
       }
 
+      const rawTimeSlot = String(preferredTimeSlot || (req.body as any).timeSlot || (req.body as any).startTime || (req.body as any).time || '').trim();
+      if (!rawTimeSlot) {
+        const lang = language === 'ua' ? 'ua' : language === 'en' ? 'en' : 'fr';
+        const msg = lang === 'ua'
+          ? 'Будь ласка, оберіть точний час початку бронювання.'
+          : lang === 'en'
+          ? 'Please select an exact booking start time.'
+          : 'Veuillez sélectionner une heure de début de rendez-vous exacte.';
+        return res.status(400).json({
+          success: false,
+          error: msg,
+          squareErrors: [{
+            category: 'SCHEDULE_AVAILABILITY_ERROR',
+            code: 'TIME_SLOT_REQUIRED',
+            detail: msg,
+            field: 'preferredTimeSlot'
+          }]
+        });
+      }
+
+      const scheduleValidation = validateBookingSchedule(preferredDate, rawTimeSlot);
+      if (!scheduleValidation.isValid) {
+        const lang = language === 'ua' ? 'ua' : language === 'en' ? 'en' : 'fr';
+        const msg = scheduleValidation.error?.[lang] || scheduleValidation.error?.fr || 'Ce créneau horaire n\'est pas disponible pour cette date.';
+        return res.status(400).json({
+          success: false,
+          error: msg,
+          squareErrors: [{
+            category: 'SCHEDULE_AVAILABILITY_ERROR',
+            code: 'TIME_SLOT_UNAVAILABLE',
+            detail: msg,
+            field: 'preferredTimeSlot'
+          }]
+        });
+      }
+
       if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
         return res.status(400).json({
           success: false,
@@ -554,7 +591,7 @@ async function startServer() {
         googlePostalCode,
         postalCodeSource,
         preferredDate,
-        preferredTimeSlot: preferredTimeSlot || 'morning',
+        preferredTimeSlot: rawTimeSlot,
         vehicleMakeModel,
         notes,
         cart,

@@ -493,12 +493,12 @@ export function resolveServiceVariation(
 
   // 2. Exact or fuzzy match in live catalog variations by name / keyword
   if (liveCatalogVariations.length > 0) {
-    const cleanId = itemId.toLowerCase().replace(/_/g, ' ');
+    const cleanId = (itemId || '').toLowerCase().replace(/_/g, ' ');
     const directMatch = liveCatalogVariations.find(v => {
-      const fullName = `${v.itemName || ''} ${v.name}`.toLowerCase();
-      return (
-        fullName.includes(cleanId) ||
-        (mapped && fullName.includes(mapped.serviceName.toLowerCase()))
+      const fullName = `${v.itemName || ''} ${v.name || ''}`.toLowerCase();
+      return Boolean(
+        (cleanId && fullName.includes(cleanId)) ||
+        (mapped?.serviceName && fullName.includes(mapped.serviceName.toLowerCase()))
       );
     });
 

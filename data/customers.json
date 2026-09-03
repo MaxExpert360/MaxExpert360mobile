@@ -1,0 +1,113 @@
+[
+  {
+    "id": "cust_1788398831767_gwdvl",
+    "phone": "8195550199",
+    "normalizedPhone": "+18195550199",
+    "name": "Test Client",
+    "primaryAddress": "123 Rue Lindsay, Drummondville, QC",
+    "addressDetails": {
+      "formattedAddress": "123 Rue Lindsay, Drummondville, QC",
+      "streetNumber": "123",
+      "streetName": "Rue Lindsay",
+      "city": "Drummondville",
+      "province": "QC",
+      "postalCode": "",
+      "country": "Canada",
+      "latitude": 45.8827,
+      "longitude": -72.4851
+    },
+    "postalCode": "",
+    "squareCustomerId": "GFEHX7E477Q8B3ABD0K1D3E580",
+    "bookingHistory": [
+      {
+        "bookingId": "6axbdpbs324akb",
+        "date": "2026-09-03",
+        "servicesSummary": "Intérieur + Extérieur (x1) - 140 $",
+        "status": "booked",
+        "createdAt": "2026-09-03T01:27:11.768Z",
+        "squareCustomerId": "GFEHX7E477Q8B3ABD0K1D3E580"
+      }
+    ],
+    "completedBookingsCount": 0,
+    "completedBookingIds": [],
+    "loyaltyRewardBalance": 0,
+    "unlockedRewards": [],
+    "createdAt": "2026-09-03T01:27:11.767Z",
+    "updatedAt": "2026-09-03T01:27:11.768Z",
+    "lastBookingDate": "2026-09-03"
+  },
+  {
+    "id": "cust_1788401995187_a6j78",
+    "phone": "8195551234",
+    "normalizedPhone": "+18195551234",
+    "name": "Test Verification",
+    "primaryAddress": "100 rue Saint-Georges, Drummondville, QC",
+    "addressDetails": {
+      "formattedAddress": "100 rue Saint-Georges, Drummondville, QC",
+      "streetNumber": "100",
+      "streetName": "rue Saint-Georges",
+      "city": "Drummondville",
+      "province": "QC",
+      "postalCode": "",
+      "country": "Canada",
+      "latitude": 45.8827,
+      "longitude": -72.4851
+    },
+    "postalCode": "",
+    "squareCustomerId": "N3CTH0EVW58RFHV6WSSQV7PZ9M",
+    "bookingHistory": [
+      {
+        "bookingId": "i61ns325vf3tie",
+        "date": "2026-09-03",
+        "servicesSummary": "Service (x1) - 100 $",
+        "totalPrice": 100,
+        "status": "booked",
+        "createdAt": "2026-09-03T02:59:16.422Z",
+        "squareCustomerId": "N3CTH0EVW58RFHV6WSSQV7PZ9M"
+      },
+      {
+        "bookingId": "xuxda3p70s0ei2",
+        "date": "2026-09-03",
+        "servicesSummary": "Service (x1) - 100 $",
+        "totalPrice": 100,
+        "status": "booked",
+        "createdAt": "2026-09-03T02:31:39.160Z",
+        "squareCustomerId": "N3CTH0EVW58RFHV6WSSQV7PZ9M"
+      },
+      {
+        "bookingId": "5qo7g4aysoy9xq",
+        "date": "2026-09-04",
+        "servicesSummary": "Service (x1) - 100 $",
+        "totalPrice": 100,
+        "status": "booked",
+        "createdAt": "2026-09-03T02:24:33.623Z",
+        "squareCustomerId": "N3CTH0EVW58RFHV6WSSQV7PZ9M"
+      },
+      {
+        "bookingId": "6nr85jdb2rxus6",
+        "date": "2026-09-04",
+        "servicesSummary": "Service (x1) - 100 $",
+        "totalPrice": 100,
+        "status": "booked",
+        "createdAt": "2026-09-03T02:24:18.517Z",
+        "squareCustomerId": "N3CTH0EVW58RFHV6WSSQV7PZ9M"
+      },
+      {
+        "bookingId": "q5ano3zo2e3wfk",
+        "date": "2026-09-04",
+        "servicesSummary": "Service (x1) - 100 $",
+        "totalPrice": 100,
+        "status": "booked",
+        "createdAt": "2026-09-03T02:19:55.187Z",
+        "squareCustomerId": "N3CTH0EVW58RFHV6WSSQV7PZ9M"
+      }
+    ],
+    "completedBookingsCount": 0,
+    "completedBookingIds": [],
+    "loyaltyRewardBalance": 0,
+    "unlockedRewards": [],
+    "createdAt": "2026-09-03T02:19:55.187Z",
+    "updatedAt": "2026-09-03T02:59:16.422Z",
+    "lastBookingDate": "2026-09-03"
+  }
+]

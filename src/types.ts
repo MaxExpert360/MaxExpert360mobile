@@ -258,7 +258,7 @@ export interface AutoBookingFormData {
   addressValidated?: boolean;
   addressDetails?: ParsedAddressDetails;
   preferredDate: string;
-  preferredTimeSlot: 'morning' | 'afternoon' | 'flexible';
+  preferredTimeSlot: string;
   clientName: string;
   clientPhone: string;
   clientEmail: string;

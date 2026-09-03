@@ -138,10 +138,10 @@ export const Header: React.FC<HeaderProps> = ({
             <a 
               href={DYNASTIE_INFO.facebookUrl}
               target="_blank" 
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="hidden md:flex items-center gap-1.5 text-white/90 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-[11px] font-medium transition-colors"
             >
-              <Facebook className="w-3.5 h-3.5 text-[#60A5FA]" />
+              <Facebook className="w-3.5 h-3.5 text-[#22C55E]" />
               <span>{DYNASTIE_INFO.facebook}</span>
             </a>
 
@@ -192,8 +192,22 @@ export const Header: React.FC<HeaderProps> = ({
         </nav>
 
         {/* Action Controls & Language Selector */}
-        <div className="flex items-center gap-2.5 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           
+          {/* Facebook Link Button */}
+          <a
+            id="header-facebook-button"
+            href={DYNASTIE_INFO.facebookUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md border border-[#223326] bg-[#111A13] text-xs font-semibold text-[#D1D5DB] hover:text-white hover:border-[#22C55E] hover:bg-[#162719] transition-all shadow-sm group"
+            title="MaxExpert360 Mobile Facebook"
+            aria-label="Facebook MaxExpert360 Mobile"
+          >
+            <Facebook className="w-3.5 h-3.5 text-[#22C55E] group-hover:scale-110 transition-transform shrink-0" />
+            <span className="hidden sm:inline font-medium">Facebook</span>
+          </a>
+
           {/* Language Switcher */}
           <div className="relative">
             <button
@@ -360,8 +374,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div className="flex items-center justify-between text-[#9CA3AF]">
               <span>Facebook:</span>
-              <a href={DYNASTIE_INFO.facebookUrl} target="_blank" rel="noreferrer" className="text-[#60A5FA] font-medium flex items-center gap-1">
-                <Facebook className="w-3.5 h-3.5" />
+              <a href={DYNASTIE_INFO.facebookUrl} target="_blank" rel="noopener noreferrer" className="text-[#86EFAC] hover:text-white font-medium flex items-center gap-1 transition-colors">
+                <Facebook className="w-3.5 h-3.5 text-[#22C55E]" />
                 {DYNASTIE_INFO.facebook}
               </a>
             </div>
