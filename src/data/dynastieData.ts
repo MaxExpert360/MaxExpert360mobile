@@ -300,21 +300,21 @@ export const CARPET_SERVICES = [
   { 
     id: 'tapis_pi2', 
     name: { fr: 'Tapis & Moquette au pi²', ua: 'Килими та ковролін за кв. фут', en: 'Carpet per sq.ft' }, 
-    pricePerSqFt: 0.30,
+    pricePerSqFt: 0.40,
     description: { 
-      fr: 'À partir de 0,30 $ / pi² (sur estimation de surface)', 
-      ua: 'Від 0,30 $ / кв. фут (розрахунок площі)', 
-      en: 'From $0.30 / sq.ft (area estimate)' 
+      fr: '0,40 $ / pi² (minimum 40 $ pour une petite surface)', 
+      ua: '0,40 $ / кв. фут (мінімум 40 $ для малої площі)', 
+      en: '$0.40 / sq.ft ($40 minimum for a small area)' 
     } 
   },
   { 
-    id: 'escalier_complet', 
-    name: { fr: 'Escalier moquetté complet', ua: 'Килимові сходи (комплекс)', en: 'Full Carpeted Stairs' }, 
-    price: 120,
+    id: 'marche_tapissee', 
+    name: { fr: 'Marche d’escalier moquettée', ua: 'Килимова сходинка', en: 'Carpeted stair step' }, 
+    price: 4,
     description: { 
-      fr: 'À partir de 120 $ (volée standard 12-15 marches)', 
-      ua: 'Від 120 $ (стандартний марш 12-15 сходинок)', 
-      en: 'Starting from $120 (standard 12-15 stairs)' 
+      fr: '4 $ / marche (palier en supplément)', 
+      ua: '4 $ / сходинка (площадка окремо)', 
+      en: '$4 / stair step (landing extra)' 
     } 
   }
 ];
@@ -784,65 +784,8 @@ export const BEFORE_AFTER_ITEMS: BeforeAfterAutoItem[] = [
   }
 ];
 
-export const REVIEWS_AUTO: AutoReviewItem[] = [
-  {
-    id: 'rev_1',
-    name: 'Patrick Bouchard',
-    location: 'Drummondville, QC',
-    vehicle: 'Toyota RAV4 & Divan de salon',
-    rating: 5,
-    date: 'Il y a 1 semaine',
-    service: {
-      fr: 'Intérieur + Extérieur Complet + Divan',
-      ua: 'Повний Комплекс Авто + Диван',
-      en: 'Complete In/Out + Sofa'
-    },
-    text: {
-      fr: 'Max est venu directement chez nous à Drummondville avec son équipement. Mon RAV4 est comme neuf et notre canapé de salon n\'a plus aucune tache. Service ponctuel, minutieux et très courtois. Je recommande à 100% !',
-      ua: 'Макс приїхав прямо до нашого будинку в Драммондвілі з усім обладнанням. Автомобіль сяє, а диван у вітальні тепер як з магазину! Дуже акуратна та якісна робота.',
-      en: 'Max came directly to our home in Drummondville. My RAV4 feels brand new and our living room couch looks spotless. Punctual, meticulous and courteous!'
-    },
-    verified: true
-  },
-  {
-    id: 'rev_2',
-    name: 'Julie Lemaire',
-    location: 'Saint-Cyrille-de-Wendover, QC',
-    vehicle: 'Hyundai Tucson',
-    rating: 5,
-    date: 'Il y a 2 semaines',
-    service: {
-      fr: 'Remise à Neuf + Poils d\'animaux',
-      ua: 'Пакет Реновація + Шерсть тварин',
-      en: 'Deep Rejuvenation + Pet Hair'
-    },
-    text: {
-      fr: 'Avec deux gros chiens, l\'intérieur de mon VUS était un cauchemar de poils et de boue. Max a passé chaque centimètre au peigne fin et a fait des miracles avec son extracteur à eau chaude. Merci encore !',
-      ua: 'Маю двох великих собак, салон авто був повністю в шерсті. Макс провів колосальну роботу екстрактором, усе ідеально чисте та без запаху!',
-      en: 'With two large dogs my SUV was full of hair and grime. Max worked miracles with hot water extraction. Incredible work!'
-    },
-    verified: true
-  },
-  {
-    id: 'rev_3',
-    name: 'Martin Gagnon',
-    location: 'Saint-Germain-de-Grantham, QC',
-    vehicle: 'GMC Sierra 1500 & Matelas',
-    rating: 5,
-    date: 'Il y a 3 semaines',
-    service: {
-      fr: 'Intérieur + Extérieur Complet + Matelas King',
-      ua: 'Повний Комплекс Пікап + Матрац King',
-      en: 'Complete In/Out + King Mattress'
-    },
-    text: {
-      fr: 'Très impressionné par l\'efficacité du service mobile. On ne perd pas de temps à se déplacer, on reste tranquille à la maison pendant que le travail est fait avec un professionnalisme exemplaire. 5 étoiles méritées !',
-      ua: 'Вражений зручністю мобільного виїзду. Не потрібно нікуди їхати, майстер робить все на місці з професійним обладнанням. 5 зірок!',
-      en: 'Very impressed by the convenience of the mobile unit. No time wasted driving anywhere while everything is done to perfection right at home!'
-    },
-    verified: true
-  }
-];
+// Liste vide des avis - Aucun faux avis (affichage réservé aux vrais avis clients)
+export const REVIEWS_AUTO: AutoReviewItem[] = [];
 
 export const FAQ_DETAILING: DetailingFaqItem[] = [
   {
