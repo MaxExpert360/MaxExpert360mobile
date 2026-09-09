@@ -142,6 +142,8 @@ export interface AutoReviewItem {
     en: string;
   };
   verified: boolean;
+  photos?: string[];
+  source?: string;
 }
 
 export interface DetailingFaqItem {
@@ -263,6 +265,7 @@ export interface AutoBookingFormData {
   clientPhone: string;
   clientEmail: string;
   notes: string;
+  bookingPhotos?: string[];
   contactMethod?: 'phone' | 'sms' | 'facebook' | 'email';
   totalPrice?: number;
   selectedRewardId?: string;
