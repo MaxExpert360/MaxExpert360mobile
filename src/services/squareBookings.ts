@@ -96,6 +96,7 @@ export async function submitRealSquareBooking(
     preferredTimeSlot: formData.preferredTimeSlot,
     vehicleMakeModel: formData.vehicleMakeModel,
     notes: formData.notes,
+    bookingPhotos: formData.bookingPhotos || [],
     cart,
     language: lang
   };
@@ -361,9 +362,10 @@ export function calculateCartSummary(items: CartItem[], activeCategory?: 'auto' 
   const activeItems = items.filter(it => it.quantity > 0);
   const subtotal = activeItems.reduce((sum, it) => sum + (it.unitPrice * it.quantity), 0);
   
-  // No minimum service fee
-  const minimumAdjustment = 0;
-  const totalPrice = subtotal;
+  // Mobile minimum for carpet/moquette-only bookings. Other categories keep their existing pricing.
+  const carpetOnly = activeCategory === 'carpet' || (activeItems.length > 0 && activeItems.every(it => it.category === 'carpet'));
+  const minimumAdjustment = carpetOnly && subtotal > 0 && subtotal < 80 ? 80 - subtotal : 0;
+  const totalPrice = subtotal + minimumAdjustment;
 
   let durFr = '2 - 3 heures';
   let durUa = '2 - 3 години';
