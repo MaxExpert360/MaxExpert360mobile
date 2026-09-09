@@ -80,8 +80,12 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
   const [selectedFurniture, setSelectedFurniture] = useState<{ [id: string]: number }>({
     'sofa_3': 1
   });
-  const [carpetSqFt, setCarpetSqFt] = useState<number>(200);
+  const [carpetLength, setCarpetLength] = useState<number>(12);
+  const [carpetWidth, setCarpetWidth] = useState<number>(10);
+  const [carpetSurfaceType, setCarpetSurfaceType] = useState<'room' | 'corridor' | 'rug'>('room');
   const [carpetStairsCount, setCarpetStairsCount] = useState<number>(0);
+  const [carpetLandingsCount, setCarpetLandingsCount] = useState<number>(0);
+  const carpetSqFt = Math.max(0, Math.round(carpetLength * carpetWidth));
   const [selectedMattress, setSelectedMattress] = useState<{ [id: string]: number }>({
     'queen': 1
   });
@@ -103,8 +107,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       catAuto: 'Auto / Berline',
       catSuv: 'VUS / SUV',
       catTruckVan: 'Camionnette / Van',
-      carpetSlider: 'Superficie du tapis (pi²) à 0,30 $/pi² :',
-      stairsLabel: 'Escalier complet avec contremarches (120 $ / escalier) :',
+      carpetSlider: 'Dimensions de la surface à nettoyer',
+      stairsLabel: 'Escaliers — 4 $ / marche',
       summaryTitle: 'Votre Estimation Instantanée',
       basePackage: 'Prestation principale',
       extrasLabel: 'Options ajoutées',
@@ -129,8 +133,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       catAuto: 'Легкове авто / Седан',
       catSuv: 'Кросовер / VUS',
       catTruckVan: 'Пікап / Вен',
-      carpetSlider: 'Площа килима (кв.фути) по 0,30 $/кв.ф :',
-      stairsLabel: 'Килимові сходи (120 $ за сходовий проліт) :',
+      carpetSlider: 'Розміри поверхні для чищення',
+      stairsLabel: 'Сходи — 4 $ / сходинка',
       summaryTitle: 'Ваш Розрахунок Вартості',
       basePackage: 'Основна послуга',
       extrasLabel: 'Додаткові опції',
@@ -155,8 +159,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       catAuto: 'Car / Sedan',
       catSuv: 'SUV / Crossover',
       catTruckVan: 'Truck / Van',
-      carpetSlider: 'Carpet area (sq.ft) at $0.30/sq.ft :',
-      stairsLabel: 'Full carpeted stairs ($120 / flight) :',
+      carpetSlider: 'Surface dimensions to clean',
+      stairsLabel: 'Stairs — $4 / step',
       summaryTitle: 'Your Instant Estimate',
       basePackage: 'Main Service',
       extrasLabel: 'Selected add-ons',
@@ -198,9 +202,11 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       duration = '1.5 - 3 h';
     } else if (activeTab === 'carpet') {
       mainName = currentLang === 'fr' ? 'Nettoyage Tapis & Escaliers' : currentLang === 'ua' ? 'Хімчистка килимів та сходів' : 'Carpet & Stairs Deep Extraction';
-      const carpetCost = Math.round(carpetSqFt * 0.30);
-      const stairsCost = carpetStairsCount * 120;
-      basePrice = carpetCost + stairsCost;
+      const rate = carpetSurfaceType === 'rug' ? 1.00 : 0.40;
+      const areaCost = carpetSqFt > 0 ? Math.max(carpetSurfaceType === 'rug' ? 0 : 40, Math.round(carpetSqFt * rate)) : 0;
+      const stairsCost = carpetStairsCount * 4;
+      const landingsCost = carpetLandingsCount * 20;
+      basePrice = areaCost + stairsCost + landingsCost;
       duration = '1 - 2.5 h';
     } else if (activeTab === 'mattress') {
       mainName = currentLang === 'fr' ? 'Désinfection & Nettoyage Matelas' : currentLang === 'ua' ? 'Хімчистка та дезінфекція матраців' : 'Mattress Deep Sanitization';
@@ -230,7 +236,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       hasMinApplied,
       duration
     };
-  }, [activeTab, calcState, selectedFurniture, carpetSqFt, carpetStairsCount, selectedMattress, selectedTruckId, currentLang]);
+  }, [activeTab, calcState, selectedFurniture, carpetSqFt, carpetSurfaceType, carpetStairsCount, carpetLandingsCount, selectedMattress, selectedTruckId, currentLang]);
 
   // Compute unified BookingCart
   const currentCart = useMemo<BookingCart>(() => {
@@ -300,19 +306,21 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       });
     } else if (activeTab === 'carpet') {
       if (carpetSqFt > 0) {
-        const carpetCost = Math.round(carpetSqFt * 0.30);
+        const rate = carpetSurfaceType === 'rug' ? 1.00 : 0.40;
+        const carpetCost = Math.max(carpetSurfaceType === 'rug' ? 0 : 40, Math.round(carpetSqFt * rate));
+        const typeLabel = carpetSurfaceType === 'room'
+          ? { fr: 'Pièce complète / moquette', ua: 'Кімната / ковролін', en: 'Full room / carpet' }
+          : carpetSurfaceType === 'corridor'
+          ? { fr: 'Corridor / passage', ua: 'Коридор / прохід', en: 'Corridor / hallway' }
+          : { fr: 'Carpette / tapis amovible', ua: 'Окремий килим', en: 'Area rug' };
         items.push({
-          id: 'carpet_sqft',
+          id: `carpet_sqft_${carpetSurfaceType}`,
           category: 'carpet',
-          name: {
-            fr: `Nettoyage Tapis & Moquette (${carpetSqFt} pi²)`,
-            ua: `Хімчистка килима (${carpetSqFt} кв.фут)`,
-            en: `Carpet Deep Cleaning (${carpetSqFt} sq.ft)`
-          },
+          name: typeLabel,
           details: {
-            fr: `${carpetSqFt} pi² à 0,30 $/pi²`,
-            ua: `${carpetSqFt} кв.ф по 0,30 $/кв.ф`,
-            en: `${carpetSqFt} sq.ft at $0.30/sq.ft`
+            fr: `${carpetLength} × ${carpetWidth} pi = ${carpetSqFt} pi² à ${rate.toFixed(2).replace('.', ',')} $/pi²`,
+            ua: `${carpetLength} × ${carpetWidth} фут = ${carpetSqFt} кв.фут по ${rate.toFixed(2)} $/кв.фут`,
+            en: `${carpetLength} × ${carpetWidth} ft = ${carpetSqFt} sq.ft at $${rate.toFixed(2)}/sq.ft`
           },
           quantity: 1,
           unitPrice: carpetCost,
@@ -321,21 +329,18 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       }
       if (carpetStairsCount > 0) {
         items.push({
-          id: 'carpet_stairs',
-          category: 'carpet',
-          name: {
-            fr: 'Escalier moquetté complet (marches & contremarches)',
-            ua: 'Килимові сходи (повний сходовий марш)',
-            en: 'Full Carpeted Stairs (steps & risers)'
-          },
-          details: {
-            fr: `${carpetStairsCount} escalier(s) complet(s)`,
-            ua: `${carpetStairsCount} сходовий(і) марш(і)`,
-            en: `${carpetStairsCount} stair flight(s)`
-          },
-          quantity: carpetStairsCount,
-          unitPrice: 120,
-          totalPrice: 120 * carpetStairsCount
+          id: 'carpet_stairs', category: 'carpet',
+          name: { fr: 'Marches d’escalier moquettées', ua: 'Килимові сходинки', en: 'Carpeted stair steps' },
+          details: { fr: `${carpetStairsCount} marche(s) × 4 $`, ua: `${carpetStairsCount} сход. × 4 $`, en: `${carpetStairsCount} steps × $4` },
+          quantity: carpetStairsCount, unitPrice: 4, totalPrice: 4 * carpetStairsCount
+        });
+      }
+      if (carpetLandingsCount > 0) {
+        items.push({
+          id: 'carpet_landings', category: 'carpet',
+          name: { fr: 'Palier d’escalier', ua: 'Сходова площадка', en: 'Stair landing' },
+          details: { fr: `${carpetLandingsCount} palier(s) × 20 $`, ua: `${carpetLandingsCount} площад. × 20 $`, en: `${carpetLandingsCount} landing(s) × $20` },
+          quantity: carpetLandingsCount, unitPrice: 20, totalPrice: 20 * carpetLandingsCount
         });
       }
     } else if (activeTab === 'mattress') {
@@ -375,7 +380,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
     }
 
     return calculateCartSummary(items, activeTab);
-  }, [activeTab, calcState, selectedFurniture, carpetSqFt, carpetStairsCount, selectedMattress, selectedTruckId]);
+  }, [activeTab, calcState, selectedFurniture, carpetSqFt, carpetLength, carpetWidth, carpetSurfaceType, carpetStairsCount, carpetLandingsCount, selectedMattress, selectedTruckId]);
 
   // Keep parent cart state in sync
   React.useEffect(() => {
@@ -682,53 +687,37 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
 
             {/* TAB 3: CARPETS & STAIRS */}
             {activeTab === 'carpet' && (
-              <div className="bg-[#0D1810] border border-[#1E3623] rounded-2xl p-5 sm:p-6 space-y-6 animate-fade-in">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-white font-bold uppercase">{t.carpetSlider}</span>
-                    <span className="text-[#22C55E] font-mono font-black text-sm bg-[#112417] px-3 py-1 rounded border border-[#22C55E]/40">
-                      {carpetSqFt} pi² ({Math.round(carpetSqFt * 0.30)} $)
-                    </span>
+              <div className="bg-[#0D1810] border border-[#1E3623] rounded-2xl p-5 sm:p-6 space-y-5 animate-fade-in">
+                <div>
+                  <h3 className="font-heading text-sm font-black text-white uppercase tracking-wider mb-3">{t.carpetSlider}</h3>
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {(['room','corridor','rug'] as const).map(type => {
+                      const labels = {
+                        room: currentLang === 'fr' ? 'Pièce' : currentLang === 'ua' ? 'Кімната' : 'Room',
+                        corridor: currentLang === 'fr' ? 'Corridor' : currentLang === 'ua' ? 'Коридор' : 'Corridor',
+                        rug: currentLang === 'fr' ? 'Carpette' : currentLang === 'ua' ? 'Килим' : 'Area rug'
+                      };
+                      return <button key={type} type="button" onClick={() => setCarpetSurfaceType(type)} className={`p-2.5 rounded-xl border text-xs font-bold ${carpetSurfaceType===type?'bg-[#162D1D] border-[#22C55E] text-white':'bg-[#101E14] border-[#1B3020] text-[#9CA3AF]'}`}>{labels[type]}</button>;
+                    })}
                   </div>
-                  <input
-                    type="range"
-                    min="50"
-                    max="1500"
-                    step="25"
-                    value={carpetSqFt}
-                    onChange={(e) => setCarpetSqFt(parseInt(e.target.value))}
-                    className="w-full cursor-pointer accent-[#22C55E]"
-                  />
-                  <div className="flex justify-between text-[10px] text-[#6B7280] font-mono">
-                    <span>50 pi² (15 $)</span>
-                    <span>500 pi² (150 $)</span>
-                    <span>1500 pi² (450 $)</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="text-xs text-[#D1D5DB]">{currentLang==='fr'?'Longueur (pi)':currentLang==='ua'?'Довжина (фут)':'Length (ft)'}
+                      <input type="number" min="0" step="0.5" value={carpetLength} onChange={e=>setCarpetLength(Math.max(0,Number(e.target.value)))} className="mt-1 w-full bg-[#080E0A] rounded-xl px-3 py-2.5 text-white border border-[#203926] focus:border-[#22C55E] focus:outline-none" />
+                    </label>
+                    <label className="text-xs text-[#D1D5DB]">{currentLang==='fr'?'Largeur (pi)':currentLang==='ua'?'Ширина (фут)':'Width (ft)'}
+                      <input type="number" min="0" step="0.5" value={carpetWidth} onChange={e=>setCarpetWidth(Math.max(0,Number(e.target.value)))} className="mt-1 w-full bg-[#080E0A] rounded-xl px-3 py-2.5 text-white border border-[#203926] focus:border-[#22C55E] focus:outline-none" />
+                    </label>
                   </div>
-                </div>
-
-                <div className="pt-4 border-t border-[#1A3320] flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-white block">{t.stairsLabel}</span>
-                    <span className="text-[11px] text-[#9CA3AF]">Extraction complète marches & contremarches</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setCarpetStairsCount(prev => Math.max(0, prev - 1))}
-                      className="w-7 h-7 rounded-lg bg-[#182C1D] border border-[#22C55E]/40 text-white font-bold flex items-center justify-center hover:bg-[#22C55E] hover:text-black transition-colors"
-                    >
-                      -
-                    </button>
-                    <span className="w-6 text-center font-mono font-bold text-sm text-white">{carpetStairsCount}</span>
-                    <button
-                      type="button"
-                      onClick={() => setCarpetStairsCount(prev => prev + 1)}
-                      className="w-7 h-7 rounded-lg bg-[#182C1D] border border-[#22C55E]/40 text-white font-bold flex items-center justify-center hover:bg-[#22C55E] hover:text-black transition-colors"
-                    >
-                      +
-                    </button>
+                  <div className="mt-3 flex justify-between items-center p-3 rounded-xl bg-[#112115] border border-[#1C3622]">
+                    <span className="text-xs text-[#9CA3AF]">{carpetSqFt} pi² • {carpetSurfaceType==='rug'?'1,00':'0,40'} $/pi²</span>
+                    <span className="text-[#22C55E] font-mono font-black">{carpetSqFt > 0 ? Math.max(carpetSurfaceType==='rug'?0:40, Math.round(carpetSqFt*(carpetSurfaceType==='rug'?1:0.4))) : 0} $</span>
                   </div>
                 </div>
+                <div className="pt-4 border-t border-[#1A3320] space-y-3">
+                  <div className="flex items-center justify-between"><div><span className="text-xs font-bold text-white block">{t.stairsLabel}</span><span className="text-[11px] text-[#9CA3AF]">{currentLang==='fr'?'Entrez le nombre réel de marches':currentLang==='ua'?'Вкажіть точну кількість сходинок':'Enter the actual number of steps'}</span></div><input type="number" min="0" value={carpetStairsCount} onChange={e=>setCarpetStairsCount(Math.max(0,parseInt(e.target.value)||0))} className="w-20 bg-[#080E0A] rounded-xl px-3 py-2 text-center text-white border border-[#203926]" /></div>
+                  <div className="flex items-center justify-between"><div><span className="text-xs font-bold text-white block">{currentLang==='fr'?'Palier — 20 $ / unité':currentLang==='ua'?'Площадка — 20 $ / шт.':'Landing — $20 each'}</span></div><input type="number" min="0" value={carpetLandingsCount} onChange={e=>setCarpetLandingsCount(Math.max(0,parseInt(e.target.value)||0))} className="w-20 bg-[#080E0A] rounded-xl px-3 py-2 text-center text-white border border-[#203926]" /></div>
+                </div>
+                <div className="text-[11px] text-[#9CA3AF] p-3 bg-[#0A120C] rounded-xl border border-[#1A3320]">{currentLang==='fr'?'Minimum de commande mobile : 80 $. Petite surface de moquette : minimum 40 $. Le prix final peut varier selon les taches et l’état.':currentLang==='ua'?'Мінімальне мобільне замовлення: 80 $. Мала площа ковроліну: мінімум 40 $. Фінальна ціна може змінитися через сильні плями або стан.':'Mobile order minimum: $80. Small carpeted surface minimum: $40. Final price may vary for heavy stains/condition.'}</div>
               </div>
             )}
 
