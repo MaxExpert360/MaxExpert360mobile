@@ -21,7 +21,8 @@ import {
   Mail,
   User,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  Camera
 } from 'lucide-react';
 import {
   BookingCart,
@@ -133,6 +134,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [carpetDescInput, setCarpetDescInput] = useState('');
   const [mattressDescInput, setMattressDescInput] = useState('');
   const [truckDescInput, setTruckDescInput] = useState('');
+  const [bookingPhotos, setBookingPhotos] = useState<string[]>([]);
+
+  const handleBookingPhotoFiles = async (files: FileList | null) => {
+    if (!files) return;
+    const selected = Array.from(files).slice(0, Math.max(0, 5 - bookingPhotos.length));
+    const valid = selected.filter(file => file.type.startsWith('image/') && file.size <= 10 * 1024 * 1024);
+    const urls = await Promise.all(valid.map(file => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    })));
+    setBookingPhotos(prev => [...prev, ...urls].slice(0, 5));
+  };
 
   // Selected loyalty reward
   const [selectedLoyaltyReward, setSelectedLoyaltyReward] = useState<any | null>(null);
@@ -835,7 +850,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setFormData(prev => ({
         ...prev,
         vehicleMakeModel: vehicleMakeModelInput.trim() || furnitureDescInput.trim() || carpetDescInput.trim() || mattressDescInput.trim() || truckDescInput.trim(),
-        notes: notesParts.join(' | ')
+        notes: notesParts.join(' | '),
+        bookingPhotos
       }));
 
       setStep(4);
@@ -858,7 +874,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           confirmedPostalCode: normalizedPostal,
           totalPrice: finalAdjustedTotal,
           selectedRewardId: selectedLoyaltyReward?.id,
-          rewardDiscount: loyaltyCreditDiscount
+          rewardDiscount: loyaltyCreditDiscount,
+          bookingPhotos
         };
 
         const result = await submitRealSquareBooking(cart, finalSubmissionData, currentLang);
@@ -1904,6 +1921,35 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     </div>
                   );
                 })()}
+              </div>
+
+              {/* Optional booking photos */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <label className="block text-xs font-mono font-bold text-[#D1D5DB] uppercase">
+                      {currentLang === 'fr' ? 'Photos (facultatif)' : currentLang === 'ua' ? 'Фото (необов’язково)' : 'Photos (optional)'}
+                    </label>
+                    <p className="text-[11px] text-[#9CA3AF] mt-1">
+                      {currentLang === 'fr' ? 'Ajoutez jusqu’à 5 photos des taches, du tapis, du sofa, du matelas ou du véhicule.' : currentLang === 'ua' ? 'Додайте до 5 фото плям, килима, дивана, матраца або авто.' : 'Add up to 5 photos of stains, carpet, sofa, mattress or vehicle.'}
+                    </p>
+                  </div>
+                  <label className="shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#122616] border border-[#22C55E]/50 text-[#86EFAC] text-xs font-bold cursor-pointer">
+                    <Camera className="w-4 h-4" />
+                    {currentLang === 'fr' ? 'Ajouter' : currentLang === 'ua' ? 'Додати' : 'Add'}
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={e => { handleBookingPhotoFiles(e.target.files); e.currentTarget.value = ''; }} />
+                  </label>
+                </div>
+                {bookingPhotos.length > 0 && (
+                  <div className="grid grid-cols-5 gap-2">
+                    {bookingPhotos.map((photo, index) => (
+                      <div key={index} className="relative">
+                        <img src={photo} alt={`Booking ${index + 1}`} className="w-full aspect-square rounded-lg object-cover border border-[#203926]" />
+                        <button type="button" onClick={() => setBookingPhotos(prev => prev.filter((_, i) => i !== index))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#1B0D0D] border border-red-500 text-red-300 text-xs">×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Notes */}
