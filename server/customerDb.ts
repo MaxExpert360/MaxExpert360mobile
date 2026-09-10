@@ -22,6 +22,7 @@ export interface CustomerBookingRecord {
   createdAt: string;
   completedAt?: string;
   squareCustomerId?: string;
+  photos?: string[];
 }
 
 export interface LoyaltyReward {
@@ -303,6 +304,7 @@ export class CustomerDatabase {
       servicesSummary: string;
       totalPrice: number;
       squareCustomerId?: string;
+      photos?: string[];
     }
   ): CustomerProfile {
     const normalized = this.normalizePhone(phone);
@@ -323,7 +325,8 @@ export class CustomerDatabase {
       totalPrice: booking.totalPrice,
       status: 'booked',
       createdAt: new Date().toISOString(),
-      squareCustomerId: booking.squareCustomerId
+      squareCustomerId: booking.squareCustomerId,
+      photos: booking.photos || []
     };
 
     // Avoid duplicate booking ids in history
