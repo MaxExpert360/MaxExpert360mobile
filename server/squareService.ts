@@ -19,6 +19,7 @@ export interface BookingRequestInput {
   preferredTimeSlot: string;
   vehicleMakeModel?: string;
   notes?: string;
+  bookingPhotos?: string[];
   cart: {
     items: Array<{
       id: string;
@@ -1004,7 +1005,8 @@ export class SquareBookingsService {
         date: input.preferredDate,
         servicesSummary: itemNamesFormatted.join(' • '),
         totalPrice: input.cart.totalPrice,
-        squareCustomerId: customer.customerId
+        squareCustomerId: customer.customerId,
+        photos: input.bookingPhotos || []
       });
     } catch (dbErr) {
       console.warn('[CustomerDb Warning] Could not record booking in local db:', dbErr);
