@@ -300,21 +300,21 @@ export const CARPET_SERVICES = [
   { 
     id: 'tapis_pi2', 
     name: { fr: 'Tapis & Moquette au pi²', ua: 'Килими та ковролін за кв. фут', en: 'Carpet per sq.ft' }, 
-    pricePerSqFt: 0.40,
+    pricePerSqFt: 0.30,
     description: { 
-      fr: '0,40 $ / pi² (minimum 40 $ pour une petite surface)', 
-      ua: '0,40 $ / кв. фут (мінімум 40 $ для малої площі)', 
-      en: '$0.40 / sq.ft ($40 minimum for a small area)' 
+      fr: 'À partir de 0,30 $ / pi² (sur estimation de surface)', 
+      ua: 'Від 0,30 $ / кв. фут (розрахунок площі)', 
+      en: 'From $0.30 / sq.ft (area estimate)' 
     } 
   },
   { 
-    id: 'marche_tapissee', 
-    name: { fr: 'Marche d’escalier moquettée', ua: 'Килимова сходинка', en: 'Carpeted stair step' }, 
-    price: 4,
+    id: 'escalier_complet', 
+    name: { fr: "Escalier moquetté (marches)", ua: 'Килимові сходинки', en: 'Carpeted Stairs (steps)' }, 
+    price: 5.30,
     description: { 
-      fr: '4 $ / marche (palier en supplément)', 
-      ua: '4 $ / сходинка (площадка окремо)', 
-      en: '$4 / stair step (landing extra)' 
+      fr: '5,30 $ / marche (marches et contremarches)', 
+      ua: '5,30 $ за сходинку (сходинки та підсходинки)', 
+      en: '$5.30 / step (steps and risers)' 
     } 
   }
 ];
@@ -439,26 +439,26 @@ export const RESIDENTIAL_FURNITURE_SERVICES: DetailingServiceItem[] = [
     iconName: 'Layers',
     image: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=1000&q=80',
     subcategories: {
-      fr: ['Tapis de salon & carpettes (à partir de 0,30 $/pi²)', 'Moquettes complètes de chambres/maison', 'Escaliers moquettés (à partir de 120 $)', 'Tapis d\'entrée & passages'],
-      ua: ['Килими у вітальнях (від 0,30 $/кв. фут)', 'Ковролін у спальнях та коридорах', 'Килимові сходи (від 120 $)', 'Вхідні та приліжкові килимки'],
-      en: ['Living room area rugs (from $0.30 / sq ft)', 'Wall-to-wall room carpets', 'Carpeted staircases (from $120)', 'Entry runners & hallway rugs']
+      fr: ['Tapis de salon & carpettes (à partir de 0,30 $/pi²)', 'Moquettes complètes de chambres/maison', 'Escaliers moquettés (5,30 $ / marche)', 'Tapis d\'entrée & passages'],
+      ua: ['Килими у вітальнях (від 0,30 $/кв. фут)', 'Ковролін у спальнях та коридорах', 'Килимові сходи (5,30 $ за сходинку)', 'Вхідні та приліжкові килимки'],
+      en: ['Living room area rugs (from $0.30 / sq ft)', 'Wall-to-wall room carpets', 'Carpeted staircases ($5.30 / step)', 'Entry runners & hallway rugs']
     },
     highlights: {
       fr: [
         'Tarif avantageux à partir de 0,30 $ / pi²',
-        'Escaliers à partir de 120 $',
+        'Escaliers à 5,30 $ / marche',
         'Désinfection thermique en profondeur',
         'Ravive les fibres et couleurs d\'origine'
       ],
       ua: [
         'Вигідна ціна від 0,30 $ / кв. фут',
-        'Сходи від 120 $ за комплекс',
+        'Сходи по 5,30 $ за сходинку',
         'Глибока термічна дезінфекція',
         'Оновлення структури ворсу'
       ],
       en: [
         'Affordable starting at $0.30 / sq ft',
-        'Stairs starting from $120',
+        'Stairs at $5.30 / step',
         'Deep thermal disinfection',
         'Revitalizes fiber spring & original colors'
       ]
@@ -825,9 +825,9 @@ export const FAQ_DETAILING: DetailingFaqItem[] = [
       en: 'Do you also clean home furniture, couches, carpets and mattresses?'
     },
     answer: {
-      fr: 'Oui, absolument ! Nous sommes spécialisés dans le nettoyage par injection-extraction à l\'eau chaude des canapés, causeuses, chaises rembourrées, tapis décoratifs (à partir de 0,30 $/pi²), escaliers moquettés (à partir de 120 $) et matelas avec désinfection thermique contre les acariens et allergènes.',
-      ua: 'Так, звичайно! Ми спеціалізуємося на глибинній хімчистці диванів, крісел, стільців, килимів (від 0,30 $/кв. фут), килимових сходів (від 120 $) та матраців з термодезінфекцією від пилових кліщів.',
-      en: 'Yes, absolutely! We specialize in hot water extraction for couches, armchairs, dining chairs, rugs (from $0.30/sq ft), stairs (from $120) and mattresses with allergen sanitization.'
+      fr: 'Oui, absolument ! Nous sommes spécialisés dans le nettoyage par injection-extraction à l\'eau chaude des canapés, causeuses, chaises rembourrées, tapis décoratifs (à partir de 0,30 $/pi²), escaliers moquettés (5,30 $/marche) et matelas avec désinfection thermique contre les acariens et allergènes.',
+      ua: 'Так, звичайно! Ми спеціалізуємося на глибинній хімчистці диванів, крісел, стільців, килимів (від 0,30 $/кв. фут), килимових сходів (5,30 $/сходинка) та матраців з термодезінфекцією від пилових кліщів.',
+      en: 'Yes, absolutely! We specialize in hot water extraction for couches, armchairs, dining chairs, rugs (from $0.30/sq ft), stairs ($5.30/step) and mattresses with allergen sanitization.'
     }
   },
   {

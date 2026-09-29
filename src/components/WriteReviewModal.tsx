@@ -71,7 +71,7 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
       modalSubtitle: 'Votre satisfaction est notre plus grande fierté. Partagez votre expérience avec MaxExpert360 !',
       ratingLabel: 'Votre note globale :',
       nameLabel: 'Votre nom complet :',
-      namePlaceholder: 'ex. Patrick Bouchard',
+      namePlaceholder: 'ex. Votre nom',
       locationLabel: 'Ville / Région :',
       locationPlaceholder: 'ex. Drummondville, Saint-Cyrille...',
       vehicleLabel: 'Prestation réalisée :',
@@ -115,7 +115,7 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
       modalSubtitle: 'Your satisfaction is our pride. Share your experience with MaxExpert360!',
       ratingLabel: 'Your overall rating:',
       nameLabel: 'Your full name:',
-      namePlaceholder: 'e.g. Patrick Bouchard',
+      namePlaceholder: 'e.g. Your Name',
       locationLabel: 'City / Area:',
       locationPlaceholder: 'e.g. Drummondville, QC',
       vehicleLabel: 'Service or cleaned item:',
@@ -178,6 +178,14 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (data.review) {
+          try {
+            const raw = localStorage.getItem('maxexpert_user_reviews');
+            const list: AutoReviewItem[] = raw ? JSON.parse(raw) : [];
+            const updated = [data.review, ...list.filter(r => r.id !== data.review.id)];
+            localStorage.setItem('maxexpert_user_reviews', JSON.stringify(updated));
+          } catch {
+            // ignore
+          }
           onReviewSubmitted(data.review);
           setIsSubmitting(false);
           setIsSubmitted(true);
@@ -186,6 +194,15 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
       }
     } catch {
       // fallback to local handling
+    }
+
+    try {
+      const raw = localStorage.getItem('maxexpert_user_reviews');
+      const list: AutoReviewItem[] = raw ? JSON.parse(raw) : [];
+      const updated = [localReviewItem, ...list.filter(r => r.id !== localReviewItem.id)];
+      localStorage.setItem('maxexpert_user_reviews', JSON.stringify(updated));
+    } catch {
+      // ignore
     }
 
     onReviewSubmitted(localReviewItem);
@@ -204,24 +221,24 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleResetAndClose();
       }}
     >
-      <div className="bg-[#0C150E] border-2 border-[#22C55E]/40 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden text-white relative my-8">
+      <div className="bg-white border-2 border-[#D5EAD9] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden text-[#122B1E] relative my-8">
         
         {/* Header decoration */}
-        <div className="bg-gradient-to-r from-[#142A19] via-[#1B3821] to-[#142A19] p-5 sm:p-6 border-b border-[#22C55E]/20 flex items-center justify-between relative">
+        <div className="bg-[#EAF6EE] p-5 sm:p-6 border-b border-[#D5EAD9] flex items-center justify-between relative">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#22C55E]/20 border border-[#22C55E] flex items-center justify-center text-[#22C55E] shadow-inner">
+            <div className="w-10 h-10 rounded-2xl bg-white border border-[#16A34A]/30 flex items-center justify-center text-[#16A34A] shadow-xs">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-heading font-black text-white uppercase tracking-tight">
+              <h3 className="text-lg sm:text-xl font-heading font-black text-[#0D2818] uppercase tracking-tight">
                 {t.modalTitle}
               </h3>
-              <p className="text-xs text-[#86EFAC] font-mono mt-0.5">
+              <p className="text-xs text-[#15803D] font-mono mt-0.5">
                 MaxExpert360 • Service Client
               </p>
             </div>
@@ -229,7 +246,7 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
           <button
             type="button"
             onClick={handleResetAndClose}
-            className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/80 text-[#9CA3AF] hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-[#22C55E]/20"
+            className="w-8 h-8 rounded-full bg-white hover:bg-[#F4FAF6] text-[#4F7A64] hover:text-[#0D2818] flex items-center justify-center transition-colors cursor-pointer border border-[#D5EAD9]"
           >
             <X className="w-4 h-4" />
           </button>
@@ -239,43 +256,43 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
         <div className="p-5 sm:p-6 max-h-[80vh] overflow-y-auto">
           {isSubmitted ? (
             <div className="text-center py-6 space-y-5 animate-fade-in">
-              <div className="w-16 h-16 rounded-full bg-[#22C55E]/20 border-2 border-[#22C55E] text-[#22C55E] flex items-center justify-center mx-auto shadow-xl shadow-[#22C55E]/20 animate-bounce">
+              <div className="w-16 h-16 rounded-full bg-[#EAF6EE] border-2 border-[#16A34A] text-[#16A34A] flex items-center justify-center mx-auto shadow-xl shadow-[#16A34A]/20">
                 <CheckCircle2 className="w-9 h-9" />
               </div>
               <div className="space-y-2">
-                <h4 className="text-xl sm:text-2xl font-heading font-black text-white uppercase">
+                <h4 className="text-xl sm:text-2xl font-heading font-black text-[#0D2818] uppercase">
                   {t.successTitle}
                 </h4>
-                <p className="text-sm text-[#D1D5DB] leading-relaxed max-w-sm mx-auto">
+                <p className="text-sm text-[#3E6552] leading-relaxed max-w-sm mx-auto">
                   {t.successMessage}
                 </p>
               </div>
 
               {/* Stars recap */}
-              <div className="flex justify-center gap-1.5 text-[#22C55E]">
+              <div className="flex justify-center gap-1.5 text-[#16A34A]">
                 {[...Array(rating)].map((_, i) => (
-                  <Star key={i} className="w-6 h-6 fill-[#22C55E]" />
+                  <Star key={i} className="w-6 h-6 fill-[#16A34A]" />
                 ))}
               </div>
 
-              <div className="pt-4 border-t border-[#1C3322] space-y-2.5">
-                <p className="text-xs text-[#9CA3AF]">
+              <div className="pt-4 border-t border-[#D5EAD9] space-y-2.5">
+                <p className="text-xs text-[#4F7A64]">
                   {t.googleReviewPrompt}
                 </p>
                 <a
                   href={DYNASTIE_INFO.facebookUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-[#1877F2]/20 hover:bg-[#1877F2]/30 border border-[#1877F2]/60 text-xs font-bold text-[#60A5FA] transition-all cursor-pointer shadow-md"
+                  className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-[#1877F2]/10 hover:bg-[#1877F2]/20 border border-[#1877F2]/30 text-xs font-bold text-[#1877F2] transition-all cursor-pointer shadow-xs"
                 >
-                  <Facebook className="w-4 h-4 text-[#60A5FA]" />
+                  <Facebook className="w-4 h-4 text-[#1877F2]" />
                   <span>{t.facebookReviewBtn}</span>
                 </a>
 
                 <button
                   type="button"
                   onClick={handleResetAndClose}
-                  className="w-full py-3 px-4 rounded-xl bg-[#22C55E] hover:bg-[#1EA850] text-black font-black uppercase tracking-wider text-xs transition-all shadow-lg cursor-pointer mt-1"
+                  className="w-full py-3 px-4 rounded-xl bg-[#16A34A] hover:bg-[#15803D] text-white font-black uppercase tracking-wider text-xs transition-all shadow-md cursor-pointer mt-1"
                 >
                   {t.closeBtn}
                 </button>
@@ -283,13 +300,13 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <p className="text-xs text-[#9CA3AF] leading-relaxed">
+              <p className="text-xs text-[#3E6552] leading-relaxed">
                 {t.modalSubtitle}
               </p>
 
               {/* Interactive Star Rating */}
-              <div className="bg-[#101D13] p-4 rounded-2xl border border-[#1E3823] space-y-2 text-center">
-                <label className="text-xs font-bold uppercase tracking-wider text-[#86EFAC] block">
+              <div className="bg-[#F8FCF9] p-4 rounded-2xl border border-[#D5EAD9] space-y-2 text-center">
+                <label className="text-xs font-bold uppercase tracking-wider text-[#15803D] block">
                   {t.ratingLabel}
                 </label>
                 <div className="flex justify-center items-center gap-2">
@@ -307,15 +324,15 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
                         <Star 
                           className={`w-7 h-7 sm:w-8 sm:h-8 transition-colors ${
                             isFilled 
-                              ? 'text-[#22C55E] fill-[#22C55E] drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]' 
-                              : 'text-[#374151]'
+                              ? 'text-[#16A34A] fill-[#16A34A] drop-shadow-sm' 
+                              : 'text-[#D1D5DB]'
                           }`} 
                         />
                       </button>
                     );
                   })}
                 </div>
-                <span className="text-[11px] font-mono text-[#22C55E] font-bold block">
+                <span className="text-[11px] font-mono text-[#15803D] font-bold block">
                   {rating === 5 ? '⭐⭐⭐⭐⭐ 5.0 / 5 (Excellent)' : `${rating} / 5 étoiles`}
                 </span>
               </div>
@@ -323,9 +340,9 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
               {/* Name & City */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <label className="text-xs font-bold text-[#0D2818] flex items-center gap-1.5">
                     <span>{t.nameLabel}</span>
-                    <span className="text-[#22C55E]">*</span>
+                    <span className="text-[#16A34A]">*</span>
                   </label>
                   <input
                     type="text"
@@ -333,13 +350,13 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t.namePlaceholder}
-                    className="w-full bg-[#101D13] border border-[#1E3823] focus:border-[#22C55E] focus:ring-1 focus:ring-[#22C55E] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#4B5563] outline-none transition-all"
+                    className="w-full bg-[#F8FCF9] border border-[#D5EAD9] focus:border-[#16A34A] focus:bg-white focus:ring-1 focus:ring-[#16A34A] rounded-xl px-3.5 py-2.5 text-xs text-[#0D2818] placeholder-[#8BAAA0] outline-none transition-all"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-[#22C55E]" />
+                  <label className="text-xs font-bold text-[#0D2818] flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#16A34A]" />
                     <span>{t.locationLabel}</span>
                   </label>
                   <input
@@ -347,7 +364,7 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder={t.locationPlaceholder}
-                    className="w-full bg-[#101D13] border border-[#1E3823] focus:border-[#22C55E] focus:ring-1 focus:ring-[#22C55E] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#4B5563] outline-none transition-all"
+                    className="w-full bg-[#F8FCF9] border border-[#D5EAD9] focus:border-[#16A34A] focus:bg-white focus:ring-1 focus:ring-[#16A34A] rounded-xl px-3.5 py-2.5 text-xs text-[#0D2818] placeholder-[#8BAAA0] outline-none transition-all"
                   />
                 </div>
               </div>
@@ -355,11 +372,11 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
               {/* Vehicle or Service */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <Car className="w-3.5 h-3.5 text-[#22C55E]" />
+                  <label className="text-xs font-bold text-[#0D2818] flex items-center gap-1.5">
+                    <Car className="w-3.5 h-3.5 text-[#16A34A]" />
                     <span>{t.vehicleLabel}</span>
                   </label>
-                  <span className="text-[10px] text-[#9CA3AF] font-mono">{t.quickSelect}</span>
+                  <span className="text-[10px] text-[#4F7A64] font-mono">{t.quickSelect}</span>
                 </div>
 
                 <div className="flex flex-wrap gap-1.5 pb-1">
@@ -370,8 +387,8 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
                       onClick={() => setVehicle(catName)}
                       className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
                         vehicle === catName 
-                          ? 'bg-[#22C55E] text-black font-bold border-[#22C55E]' 
-                          : 'bg-[#122316] text-[#BBF7D0] border-[#22C55E]/30 hover:border-[#22C55E]'
+                          ? 'bg-[#16A34A] text-white font-bold border-[#16A34A]' 
+                          : 'bg-[#F4FAF6] text-[#0D2818] border-[#D5EAD9] hover:border-[#16A34A]'
                       }`}
                     >
                       {catName}
@@ -384,16 +401,16 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
                   value={vehicle}
                   onChange={(e) => setVehicle(e.target.value)}
                   placeholder={t.vehiclePlaceholder}
-                  className="w-full bg-[#101D13] border border-[#1E3823] focus:border-[#22C55E] focus:ring-1 focus:ring-[#22C55E] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#4B5563] outline-none transition-all"
+                  className="w-full bg-[#F8FCF9] border border-[#D5EAD9] focus:border-[#16A34A] focus:bg-white focus:ring-1 focus:ring-[#16A34A] rounded-xl px-3.5 py-2.5 text-xs text-[#0D2818] placeholder-[#8BAAA0] outline-none transition-all"
                 />
               </div>
 
               {/* Review Text */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-[#22C55E]" />
+                <label className="text-xs font-bold text-[#0D2818] flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-[#16A34A]" />
                   <span>{t.textLabel}</span>
-                  <span className="text-[#22C55E]">*</span>
+                  <span className="text-[#16A34A]">*</span>
                 </label>
                 <textarea
                   required
@@ -401,7 +418,7 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
                   value={reviewText}
                   onChange={(e) => setReviewText(e.target.value)}
                   placeholder={t.textPlaceholder}
-                  className="w-full bg-[#101D13] border border-[#1E3823] focus:border-[#22C55E] focus:ring-1 focus:ring-[#22C55E] rounded-xl p-3 text-xs text-white placeholder-[#4B5563] outline-none transition-all resize-none leading-relaxed"
+                  className="w-full bg-[#F8FCF9] border border-[#D5EAD9] focus:border-[#16A34A] focus:bg-white focus:ring-1 focus:ring-[#16A34A] rounded-xl p-3 text-xs text-[#0D2818] placeholder-[#8BAAA0] outline-none transition-all resize-none leading-relaxed"
                 />
               </div>
 
@@ -410,7 +427,7 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
                 <button
                   type="submit"
                   disabled={isSubmitting || !name.trim() || !reviewText.trim()}
-                  className="w-full py-3.5 px-6 rounded-xl bg-[#22C55E] hover:bg-[#1EA850] disabled:bg-[#1E3622] disabled:text-[#6B7280] disabled:cursor-not-allowed text-black font-heading font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-xl shadow-[#22C55E]/20 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full py-3.5 px-6 rounded-xl bg-[#16A34A] hover:bg-[#15803D] disabled:bg-[#D5EAD9] disabled:text-[#8BAAA0] disabled:cursor-not-allowed text-white font-heading font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-md shadow-[#16A34A]/20 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
                 >
                   {isSubmitting ? (
                     <span>{t.submittingBtn}</span>

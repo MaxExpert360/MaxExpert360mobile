@@ -101,45 +101,45 @@ export const ProcessSection: React.FC<ProcessSectionProps> = ({
   }[currentLang];
 
   return (
-    <section className="py-16 sm:py-20 bg-[#070B08] text-white relative border-b border-[#1A261D]">
+    <section className="py-8 sm:py-12 bg-[#070B08] text-white relative border-b border-[#1A261D]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
-          <span className="inline-block text-[11px] uppercase tracking-[0.25em] text-[#22C55E] font-mono font-bold bg-[#112417] px-3.5 py-1 rounded-full border border-[#22C55E]/40">
+        {/* Header - Compact */}
+        <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-8 space-y-2">
+          <span className="inline-block text-[10px] uppercase tracking-[0.25em] text-[#22C55E] font-mono font-bold bg-[#112417] px-3 py-0.5 rounded-full border border-[#22C55E]/40">
             {t.eyebrow}
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-heading font-black text-white tracking-tight uppercase">
+          <h2 className="text-2xl sm:text-3xl font-heading font-black text-white tracking-tight uppercase">
             {t.title}
           </h2>
-          <p className="text-sm text-[#9CA3AF] font-normal leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#9CA3AF] font-normal leading-relaxed">
             {t.subtitle}
           </p>
         </div>
 
-        {/* 4 Steps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* 4 Steps Grid - Compact */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {steps.map((st, idx) => {
             const Icon = st.icon;
 
             return (
               <div 
                 key={idx}
-                className="bg-[#0C150F] border border-[#1E3623] hover:border-[#22C55E]/60 rounded-2xl p-6 relative transition-all duration-300 flex flex-col justify-between group shadow-xl"
+                className="bg-[#0C150F] border border-[#1E3623] hover:border-[#22C55E]/60 rounded-xl p-4 sm:p-5 relative transition-all duration-300 flex flex-col justify-between group shadow-md"
               >
-                <div className="space-y-4">
+                <div className="space-y-3">
                   
-                  <div className="flex items-center justify-between border-b border-[#182C1D] pb-4">
-                    <span className="font-heading text-3xl font-black text-[#22C55E]">
+                  <div className="flex items-center justify-between border-b border-[#182C1D] pb-2.5">
+                    <span className="font-heading text-2xl font-black text-[#22C55E]">
                       {st.num}
                     </span>
-                    <div className="w-10 h-10 rounded-xl bg-[#142618] border border-[#223B27] flex items-center justify-center text-[#22C55E] group-hover:scale-110 transition-transform">
-                      <Icon className="w-5 h-5" />
+                    <div className="w-8 h-8 rounded-lg bg-[#142618] border border-[#223B27] flex items-center justify-center text-[#22C55E] group-hover:scale-110 transition-transform">
+                      <Icon className="w-4 h-4" />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <h3 className="font-heading text-base font-bold text-white group-hover:text-[#86EFAC] transition-colors">
+                  <div className="space-y-1.5">
+                    <h3 className="font-heading text-sm sm:text-base font-bold text-white group-hover:text-[#86EFAC] transition-colors">
                       {st.title[currentLang]}
                     </h3>
                     <p className="text-xs text-[#9CA3AF] font-normal leading-relaxed">
@@ -149,8 +149,8 @@ export const ProcessSection: React.FC<ProcessSectionProps> = ({
 
                 </div>
 
-                <div className="pt-4 mt-6 border-t border-[#142317] flex items-center gap-1.5 text-[11px] text-[#22C55E] font-mono font-bold">
-                  <Check className="w-3.5 h-3.5" />
+                <div className="pt-2.5 mt-3 border-t border-[#142317] flex items-center gap-1.5 text-[10px] text-[#22C55E] font-mono font-bold">
+                  <Check className="w-3 h-3" />
                   <span>100% Garanti</span>
                 </div>
               </div>

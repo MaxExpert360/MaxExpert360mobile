@@ -1,200 +1,239 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
-  Sparkles, 
-  ShieldCheck, 
-  Truck, 
   Car, 
-  Check, 
-  ArrowRight, 
+  Armchair, 
   Layers, 
-  ChevronRight,
-  Flame,
-  Award
+  Sparkles, 
+  ArrowRight 
 } from 'lucide-react';
-import { DETAILING_SERVICES, DYNASTIE_INFO } from '../data/dynastieData';
 import { Language } from '../types';
+
+// High resolution images for each service category
+import autoDetailingService from '../assets/images/auto_detailing_service_1789747720987.jpg';
+import sofaCleaningService from '../assets/images/sofa_cleaning_service_1789747685197.jpg';
+import carpetCleaningService from '../assets/images/carpet_cleaning_service_1789747708901.jpg';
+import truckCabClean from '../assets/images/truck_cab_clean_1787364002946.jpg';
 
 interface ServicesSectionProps {
   currentLang: Language;
-  onOpenBooking: () => void;
+  onSelectCategory: (category: 'auto' | 'furniture' | 'carpet' | 'mattress') => void;
 }
 
 export const ServicesSection: React.FC<ServicesSectionProps> = ({
   currentLang,
-  onOpenBooking
+  onSelectCategory
 }) => {
-  const [selectedServiceId, setSelectedServiceId] = useState(DETAILING_SERVICES[0].id);
-
-  const activeService = DETAILING_SERVICES.find(s => s.id === selectedServiceId) || DETAILING_SERVICES[0];
-
   const t = {
     fr: {
-      eyebrow: 'Expertise & Savoir-Faire',
-      title: 'Nos Prestations Haute Précision',
-      subtitle: 'Chaque surface de votre véhicule reçoit un traitement chimique et mécanique calibré pour restaurer son état neuf.',
-      fromPrice: 'À partir de',
-      bookThisService: 'Réserver cette prestation',
-      highlightsTitle: 'Ce qui fait la différence MaxExpert360mobile :'
+      eyebrow: 'SERVICE MOBILE DE NETTOYAGE',
+      titleNos: 'NOS',
+      titleServices: 'SERVICES',
+      subtitle: 'Un intérieur plus sain, plus propre, directement chez vous à Drummondville et environs.',
+      btnTarifs: 'VOIR LES TARIFS →',
+      cards: [
+        {
+          id: 'auto',
+          title: 'Nettoyage d’auto',
+          description: 'Intérieur, sièges, tapis, élimination des odeurs et traces de sel.',
+          category: 'auto' as const,
+          icon: Car,
+          image: autoDetailingService,
+          tag: 'Véhicules & VUS'
+        },
+        {
+          id: 'furniture',
+          title: 'Nettoyage de meubles',
+          description: 'Nettoyage en profondeur des divans et fauteuils. Taches, odeurs et poils d’animaux.',
+          category: 'furniture' as const,
+          icon: Armchair,
+          image: sofaCleaningService,
+          tag: 'Divans & Fauteuils'
+        },
+        {
+          id: 'carpet',
+          title: 'Nettoyage de tapis',
+          description: 'Nettoyage professionnel des tapis et carpettes. Élimination des taches tenaces.',
+          category: 'carpet' as const,
+          icon: Layers,
+          image: carpetCleaningService,
+          tag: 'Tapis & Carpettes'
+        },
+        {
+          id: 'mattress',
+          title: 'Nettoyage de matelas',
+          description: 'Nettoyage en profondeur pour éliminer taches, odeurs et allergènes.',
+          category: 'mattress' as const,
+          icon: Sparkles,
+          image: truckCabClean,
+          tag: 'Literie & Matelas'
+        }
+      ]
     },
     ua: {
-      eyebrow: 'Експертний Досвід та Стандарти',
-      title: 'Наші Послуги Високої Точності',
-      subtitle: 'Кожна деталь автомобіля проходить делікатну хімічну та механічну підготовку для ідеального результату.',
-      fromPrice: 'Від',
-      bookThisService: 'Замовити цю послугу',
-      highlightsTitle: 'Ключові переваги MaxExpert360mobile :'
+      eyebrow: 'МОБІЛЬНИЙ КЛІНІНГОВИЙ СЕРВІС',
+      titleNos: 'НАШІ',
+      titleServices: 'ПОСЛУГИ',
+      subtitle: 'Здоровий, свіжий та бездоганно чистий простір прямо біля вашого дому.',
+      btnTarifs: 'ДИВИТИСЯ ТАРИФИ →',
+      cards: [
+        {
+          id: 'auto',
+          title: 'Хімчистка авто',
+          description: 'Салон, сидіння, ковролін, усунення запахів та слідів зимової солі.',
+          category: 'auto' as const,
+          icon: Car,
+          image: autoDetailingService,
+          tag: 'Авто та кросовери'
+        },
+        {
+          id: 'furniture',
+          title: 'Хімчистка меблів',
+          description: 'Глибока екстракція диванів та крісел. Плями, запахи та шерсть тварин.',
+          category: 'furniture' as const,
+          icon: Armchair,
+          image: sofaCleaningService,
+          tag: 'Дивани та крісла'
+        },
+        {
+          id: 'carpet',
+          title: 'Чистка килимів',
+          description: 'Професійне очищення килимів та доріжок. Виведення стійких забруднень.',
+          category: 'carpet' as const,
+          icon: Layers,
+          image: carpetCleaningService,
+          tag: 'Килими та покриття'
+        },
+        {
+          id: 'mattress',
+          title: 'Хімчистка матраців',
+          description: 'Глибока дезінфекція від плям, неприємних запахів та алергенів.',
+          category: 'mattress' as const,
+          icon: Sparkles,
+          image: truckCabClean,
+          tag: 'Матраци та текстиль'
+        }
+      ]
     },
     en: {
-      eyebrow: 'Expertise & Craftsmanship',
-      title: 'High-Precision Detailing Services',
-      subtitle: 'Every surface receives calibrated chemical and mechanical care to restore it to showroom condition.',
-      fromPrice: 'Starting at',
-      bookThisService: 'Book this service',
-      highlightsTitle: 'The MaxExpert360mobile Difference :'
+      eyebrow: 'MOBILE CLEANING SERVICE',
+      titleNos: 'OUR',
+      titleServices: 'SERVICES',
+      subtitle: 'A healthier, fresher, cleaner interior, right at your location.',
+      btnTarifs: 'VIEW PRICING →',
+      cards: [
+        {
+          id: 'auto',
+          title: 'Auto Detailing',
+          description: 'Interior, seats, carpets, odor and winter salt stain removal.',
+          category: 'auto' as const,
+          icon: Car,
+          image: autoDetailingService,
+          tag: 'Cars & SUVs'
+        },
+        {
+          id: 'furniture',
+          title: 'Furniture Cleaning',
+          description: 'Deep extraction cleaning for sofas and armchairs. Stains, odors and pet hair.',
+          category: 'furniture' as const,
+          icon: Armchair,
+          image: sofaCleaningService,
+          tag: 'Couches & Sofas'
+        },
+        {
+          id: 'carpet',
+          title: 'Carpet Cleaning',
+          description: 'Professional cleaning for rugs and carpets. Stubborn stain treatment.',
+          category: 'carpet' as const,
+          icon: Layers,
+          image: carpetCleaningService,
+          tag: 'Rugs & Carpets'
+        },
+        {
+          id: 'mattress',
+          title: 'Mattress Sanitization',
+          description: 'Deep extraction to eliminate stains, lingering odors, and allergens.',
+          category: 'mattress' as const,
+          icon: Sparkles,
+          image: truckCabClean,
+          tag: 'Beds & Mattresses'
+        }
+      ]
     }
   }[currentLang];
 
   return (
-    <section id="services" className="py-20 bg-[#0C0E11] text-white relative border-b border-[#22242B]">
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+    <section id="services" className="py-10 sm:py-14 bg-[#F4FAF6] text-[#122B1E] relative scroll-mt-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         
-        {/* Section Heading */}
-        <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
-          <span className="inline-block text-[11px] uppercase tracking-[0.25em] text-[#D4AF37] font-mono font-bold bg-[#17191F] px-3.5 py-1 rounded-full border border-[#D4AF37]/30">
+        {/* Section Header */}
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10 space-y-2">
+          <span className="inline-block text-[11px] font-black uppercase tracking-[0.2em] text-[#15803D] bg-white px-3.5 py-1 rounded-full border border-[#BEE7CB] shadow-xs">
             {t.eyebrow}
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-white tracking-tight">
-            {t.title}
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black font-heading tracking-tight uppercase">
+            <span className="text-[#0D2818]">{t.titleNos}</span>{' '}
+            <span className="text-[#16A34A]">{t.titleServices}</span>
           </h2>
-          <p className="text-sm text-[#9399A5] font-light leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#3E6552] font-medium leading-relaxed max-w-xl mx-auto">
             {t.subtitle}
           </p>
         </div>
 
-        {/* 2-Column Showcase */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-          
-          {/* Left: Interactive Service List Selector (5 cols) */}
-          <div className="lg:col-span-5 space-y-3">
-            {DETAILING_SERVICES.map((srv) => {
-              const isSelected = srv.id === selectedServiceId;
+        {/* 4 Equal Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 items-stretch">
+          {t.cards.map((card) => {
+            const Icon = card.icon;
 
-              return (
-                <button
-                  key={srv.id}
-                  type="button"
-                  onClick={() => setSelectedServiceId(srv.id)}
-                  className={`w-full p-4 sm:p-5 rounded-xl border text-left transition-all flex items-center justify-between gap-4 cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#181B22] border-[#D4AF37] shadow-xl shadow-[#D4AF37]/10'
-                      : 'bg-[#121418] border-[#252830] hover:border-[#3A3E4A] text-[#8E94A0]'
-                  }`}
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold uppercase tracking-wider ${
-                        isSelected ? 'text-white' : 'text-[#CCC]'
-                      }`}>
-                        {srv.title[currentLang]}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[#7A808C] line-clamp-1">
-                      {srv.shortDesc[currentLang]}
+            return (
+              <div
+                key={card.id}
+                className="bg-white rounded-2xl border border-[#D5EAD9] shadow-xs hover:shadow-lg hover:border-[#16A34A] transition-all duration-300 flex flex-col overflow-hidden group"
+              >
+                {/* Image Container */}
+                <div className="relative aspect-[16/10] overflow-hidden bg-[#EAF5ED]">
+                  <img
+                    src={card.image}
+                    alt={card.title}
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
+                  
+                  {/* Category Pill */}
+                  <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md text-[#15803D] text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-md border border-[#BEE7CB] shadow-xs">
+                    {card.tag}
+                  </div>
+
+                  {/* Icon badge */}
+                  <div className="absolute bottom-2.5 right-2.5 w-8 h-8 rounded-xl bg-[#16A34A] text-white flex items-center justify-center shadow-md">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="space-y-1.5">
+                    <h3 className="font-heading font-black text-base sm:text-lg text-[#0D2818] uppercase tracking-tight group-hover:text-[#16A34A] transition-colors">
+                      {card.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-[#3E6552] leading-relaxed line-clamp-2">
+                      {card.description}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-mono text-xs font-bold text-[#D4AF37]">
-                      {srv.priceStart} $
-                    </span>
-                    <ChevronRight className={`w-4 h-4 transition-transform ${
-                      isSelected ? 'text-[#D4AF37] translate-x-1' : 'text-[#555]'
-                    }`} />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Right: Active Service Deep Dive Card (7 cols) */}
-          <div className="lg:col-span-7">
-            <div className="h-full bg-[#121418] border border-[#262832] rounded-2xl overflow-hidden flex flex-col justify-between shadow-2xl">
-              
-              {/* Top Image banner */}
-              <div className="relative h-64 sm:h-72 w-full overflow-hidden">
-                <img 
-                  src={activeService.image} 
-                  alt={activeService.title[currentLang]}
-                  className="w-full h-full object-cover object-center"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#121418] via-[#121418]/40 to-transparent"></div>
-                
-                <div className="absolute bottom-4 left-6 right-6 flex items-end justify-between">
-                  <div>
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#D4AF37] bg-black/70 px-2.5 py-1 rounded border border-[#D4AF37]/40 mb-1 inline-block">
-                      Prestation Dynastie
-                    </span>
-                    <h3 className="font-serif text-2xl sm:text-3xl font-bold text-white">
-                      {activeService.title[currentLang]}
-                    </h3>
-                  </div>
-
-                  <div className="text-right bg-black/80 px-3 py-1.5 rounded-lg border border-[#333]">
-                    <span className="text-[9px] uppercase font-mono text-[#888] block">{t.fromPrice}</span>
-                    <span className="font-serif text-xl font-bold text-[#D4AF37]">
-                      {activeService.priceStart} $
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card Body */}
-              <div className="p-6 sm:p-8 space-y-6 flex-1 flex flex-col justify-between">
-                
-                <div className="space-y-4">
-                  <p className="text-xs sm:text-sm text-[#A0A6B2] font-light leading-relaxed">
-                    {activeService.fullDesc[currentLang]}
-                  </p>
-
-                  {/* Highlights checkmarks */}
-                  <div className="space-y-2.5 pt-3 border-t border-[#242730]">
-                    <span className="text-[10px] uppercase font-mono tracking-wider text-[#D4AF37] block">
-                      {t.highlightsTitle}
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {activeService.highlights[currentLang].map((hl, i) => (
-                        <div key={i} className="flex items-center gap-2 text-xs text-[#CCD1DB]">
-                          <Check className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
-                          <span>{hl}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom CTA */}
-                <div className="pt-5 border-t border-[#242730] flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="text-xs text-[#7A808C] flex items-center gap-1.5">
-                    <Award className="w-4 h-4 text-[#D4AF37]" />
-                    <span>Produits professionnels allemands & suisses (Koch-Chemie, Gyeon)</span>
-                  </div>
-
+                  {/* Green Button: VOIR LES TARIFS → */}
                   <button
                     type="button"
-                    onClick={onOpenBooking}
-                    className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#D4AF37] via-[#F3C64F] to-[#C59B27] hover:brightness-110 text-[#0A0B0D] font-bold text-xs uppercase tracking-widest shadow-lg transition-all cursor-pointer shrink-0 flex items-center justify-center gap-2"
+                    onClick={() => onSelectCategory(card.category)}
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-[#16A34A] hover:bg-[#15803D] active:scale-95 text-white font-black text-xs uppercase tracking-wider shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#16A34A]"
                   >
-                    <span>{t.bookThisService}</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>{t.btnTarifs}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-
               </div>
-
-            </div>
-          </div>
-
+            );
+          })}
         </div>
 
       </div>

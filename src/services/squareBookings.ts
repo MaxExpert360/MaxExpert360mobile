@@ -360,7 +360,8 @@ export function createDefaultCart(): BookingCart {
  */
 export function calculateCartSummary(items: CartItem[], activeCategory?: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck' | 'extra' | 'multi'): BookingCart {
   const activeItems = items.filter(it => it.quantity > 0);
-  const subtotal = activeItems.reduce((sum, it) => sum + (it.unitPrice * it.quantity), 0);
+  const rawSubtotal = activeItems.reduce((sum, it) => sum + (it.unitPrice * it.quantity), 0);
+  const subtotal = Math.round(rawSubtotal * 100) / 100;
   
   // Mobile minimum for carpet/moquette-only bookings. Other categories keep their existing pricing.
   const carpetOnly = activeCategory === 'carpet' || (activeItems.length > 0 && activeItems.every(it => it.category === 'carpet'));

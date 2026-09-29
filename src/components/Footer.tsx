@@ -70,110 +70,107 @@ export const Footer: React.FC<FooterProps> = ({ currentLang }) => {
   }[currentLang];
 
   return (
-    <footer className="bg-[#050806] text-white pt-14 pb-28 border-t border-[#162419]">
+    <footer className="bg-[#0B2016] text-[#EAF6EE] pt-10 pb-24 border-t border-[#173D29]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         
         {/* Main 4-Column Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 pb-10 border-b border-[#142317]">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 pb-8 border-b border-[#173D29]">
           
           {/* Brand Presentation (5 cols) */}
-          <div className="lg:col-span-5 space-y-4">
-            <MaxLogo size="md" />
+          <div className="lg:col-span-5 space-y-3.5">
+            <MaxLogo size="sm" />
 
-            <p className="text-xs text-[#9CA3AF] font-normal leading-relaxed max-w-sm">
+            <p className="text-xs text-[#A3C7B2] font-normal leading-relaxed max-w-sm">
               {t.about}
             </p>
 
-            <div className="inline-block bg-[#0D1D12] border-l-3 border-[#22C55E] px-3 py-1.5 rounded-r">
+            <div className="inline-block bg-[#122D20] border-l-2 border-[#16A34A] px-3 py-1.5 rounded-r">
               <span className="text-xs font-bold text-[#86EFAC] italic">
                 {t.punchline}
               </span>
             </div>
 
-            <div className="flex items-center gap-2 pt-1 text-xs text-[#22C55E]">
-              <Leaf className="w-4 h-4" />
-              <span className="text-[#D1D5DB] font-mono text-[11px]">Produits 100% écologiques • Sans danger pour enfants & animaux</span>
+            <div className="flex items-center gap-2 pt-0.5 text-xs text-[#4ADE80]">
+              <Leaf className="w-4 h-4 shrink-0" />
+              <span className="text-[#C6ECCF] font-mono text-[10px]">Produits 100% écologiques • Sans danger pour enfants & animaux</span>
             </div>
           </div>
 
           {/* Quick links (2 cols) */}
           <div className="lg:col-span-2 space-y-3">
-            <h4 className="font-heading text-sm font-black text-white uppercase tracking-wider">
+            <h4 className="font-heading text-xs font-black text-white uppercase tracking-wider">
               {t.quickLinks}
             </h4>
-            <ul className="space-y-2 text-xs text-[#9CA3AF]">
+            <ul className="space-y-2 text-xs text-[#A3C7B2]">
               <li>
-                <a href="#forfaits" className="hover:text-[#22C55E] transition-colors">Forfaits Auto</a>
+                <a href="#accueil" className="hover:text-[#4ADE80] transition-colors">Accueil</a>
               </li>
               <li>
-                <a href="#residential" className="hover:text-[#22C55E] transition-colors">Sofas & Meubles</a>
+                <a href="#services" className="hover:text-[#4ADE80] transition-colors">Services</a>
               </li>
               <li>
-                <a href="#tapis-matelas" className="hover:text-[#22C55E] transition-colors">Tapis & Matelas</a>
+                <a href="#taches-difficiles" className="hover:text-[#4ADE80] transition-colors">Taches difficiles</a>
               </li>
               <li>
-                <a href="#commercial" className="hover:text-[#22C55E] transition-colors">Poids Lourds & Pro</a>
+                <a href="#avant-apres" className="hover:text-[#4ADE80] transition-colors">Avant / Après</a>
               </li>
               <li>
-                <a href="#calculator" className="hover:text-[#22C55E] transition-colors">Calculateur de prix</a>
+                <a href="#tarifs" className="hover:text-[#4ADE80] transition-colors">Tarifs & Calculateur</a>
               </li>
               <li>
-                <a href="#reviews" className="hover:text-[#22C55E] transition-colors">Avis clients</a>
-              </li>
-              <li>
-                <a href="#contact" className="hover:text-[#22C55E] transition-colors">Contact</a>
+                <a href="#contact" className="hover:text-[#4ADE80] transition-colors">Contact</a>
               </li>
             </ul>
           </div>
 
           {/* Core Services (2 cols) */}
           <div className="lg:col-span-2 space-y-3">
-            <h4 className="font-heading text-sm font-black text-white uppercase tracking-wider">
+            <h4 className="font-heading text-xs font-black text-white uppercase tracking-wider">
               {t.services}
             </h4>
-            <ul className="space-y-2 text-xs text-[#9CA3AF]">
-              <li><a href="#forfaits" className="hover:text-white transition-colors">{t.srv1}</a></li>
-              <li><a href="#residential" className="hover:text-white transition-colors">{t.srv2}</a></li>
-              <li><a href="#tapis-matelas" className="hover:text-white transition-colors">{t.srv3}</a></li>
-              <li><a href="#tapis-matelas" className="hover:text-white transition-colors">{t.srv4}</a></li>
-              <li><a href="#commercial" className="hover:text-white transition-colors">{t.srv5}</a></li>
+            <ul className="space-y-2 text-xs text-[#A3C7B2]">
+              <li><a href="#services" className="hover:text-white transition-colors">{t.srv1}</a></li>
+              <li><a href="#services" className="hover:text-white transition-colors">{t.srv2}</a></li>
+              <li><a href="#services" className="hover:text-white transition-colors">{t.srv3}</a></li>
+              <li><a href="#services" className="hover:text-white transition-colors">{t.srv4}</a></li>
+              <li><a href="#tarifs" className="hover:text-white transition-colors">{t.srv5}</a></li>
             </ul>
           </div>
 
           {/* Coordinates (3 cols) */}
           <div className="lg:col-span-3 space-y-3">
-            <h4 className="font-heading text-sm font-black text-white uppercase tracking-wider">
+            <h4 className="font-heading text-xs font-black text-white uppercase tracking-wider">
               {t.contactInfo}
             </h4>
-            <div className="space-y-2.5 text-xs text-[#9CA3AF]">
+            <div className="space-y-2.5 text-xs text-[#A3C7B2]">
               <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-[#22C55E] shrink-0 mt-0.5" />
+                <MapPin className="w-3.5 h-3.5 text-[#4ADE80] shrink-0 mt-0.5" />
                 <span>{DYNASTIE_INFO.region} (Service Mobile)</span>
               </div>
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#22C55E] shrink-0" />
+                <Clock className="w-3.5 h-3.5 text-[#4ADE80] shrink-0" />
                 <span>{DYNASTIE_INFO.workingHours[currentLang]}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-[#22C55E] shrink-0" />
-                <a href={`tel:${DYNASTIE_INFO.phones[0].raw}`} className="font-mono text-white font-bold hover:text-[#22C55E] transition-colors">
+                <Phone className="w-3.5 h-3.5 text-[#4ADE80] shrink-0" />
+                <a href={`tel:${DYNASTIE_INFO.phones[0].raw}`} className="font-mono text-white font-bold hover:text-[#4ADE80] transition-colors">
                   {DYNASTIE_INFO.phones[0].number}
                 </a>
               </div>
               <div className="flex items-center gap-2">
-                <Facebook className="w-4 h-4 text-[#60A5FA] shrink-0" />
+                <Facebook className="w-3.5 h-3.5 text-[#60A5FA] shrink-0" />
                 <a href={DYNASTIE_INFO.facebookUrl} target="_blank" rel="noreferrer" className="text-[#60A5FA] hover:text-[#93C5FD] transition-colors font-medium">
                   {DYNASTIE_INFO.facebook}
                 </a>
               </div>
               <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-[#22C55E] shrink-0" />
-                <a href={`mailto:${DYNASTIE_INFO.email}`} className="text-white hover:text-[#22C55E] transition-colors">
+                <Mail className="w-3.5 h-3.5 text-[#4ADE80] shrink-0" />
+                <a href={`mailto:${DYNASTIE_INFO.email}`} className="text-white hover:text-[#4ADE80] transition-colors">
                   {DYNASTIE_INFO.email}
                 </a>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[#22C55E] font-bold text-xs">🌐</span>
+                <span className="text-[#4ADE80] font-bold text-xs">🌐</span>
                 <a href={DYNASTIE_INFO.websiteUrl} className="text-[#86EFAC] hover:underline font-mono font-bold">
                   {DYNASTIE_INFO.website}
                 </a>
@@ -184,17 +181,17 @@ export const Footer: React.FC<FooterProps> = ({ currentLang }) => {
         </div>
 
         {/* Bottom micro copyright line */}
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#6B7280]">
+        <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-[#78A18B]">
           <p>
             © {new Date().getFullYear()} MaxExpert360mobile. {t.rights}
           </p>
           <button
             type="button"
             onClick={scrollToTop}
-            className="flex items-center gap-1.5 text-xs text-[#9CA3AF] hover:text-white transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-xs text-[#A3C7B2] hover:text-white transition-colors cursor-pointer"
           >
             <span>Haut de page</span>
-            <ArrowUp className="w-3.5 h-3.5 text-[#22C55E]" />
+            <ArrowUp className="w-3.5 h-3.5 text-[#4ADE80]" />
           </button>
         </div>
 

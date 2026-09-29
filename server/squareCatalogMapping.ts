@@ -226,18 +226,18 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
   },
   'carpet_stairs': {
     serviceId: 'carpet_stairs',
-    defaultVariationId: 'VAR_ESCALIER_COMPLET',
-    serviceName: 'Nettoyage Escalier moquetté complet',
-    durationMinutes: 90,
-    priceCents: 12000,
+    defaultVariationId: 'VAR_ESCALIER_MARCHE',
+    serviceName: "Nettoyage Marches d'escalier moquette (par marche)",
+    durationMinutes: 45,
+    priceCents: 530,
     category: 'carpet'
   },
   'escalier_complet': {
     serviceId: 'escalier_complet',
-    defaultVariationId: 'VAR_ESCALIER_COMPLET',
-    serviceName: 'Nettoyage Escalier moquetté complet',
-    durationMinutes: 90,
-    priceCents: 12000,
+    defaultVariationId: 'VAR_ESCALIER_MARCHE',
+    serviceName: "Nettoyage Marches d'escalier moquette (par marche)",
+    durationMinutes: 45,
+    priceCents: 530,
     category: 'carpet'
   },
   'tapis_petit': {
@@ -267,9 +267,9 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
   'escalier_marche': {
     serviceId: 'escalier_marche',
     defaultVariationId: 'VAR_ESCALIER_MARCHE',
-    serviceName: 'Nettoyage Marches d\'escalier moquette',
+    serviceName: "Nettoyage Marches d'escalier moquette",
     durationMinutes: 45,
-    priceCents: 500,
+    priceCents: 530,
     category: 'carpet'
   },
 

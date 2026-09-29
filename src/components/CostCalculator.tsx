@@ -80,12 +80,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
   const [selectedFurniture, setSelectedFurniture] = useState<{ [id: string]: number }>({
     'sofa_3': 1
   });
-  const [carpetLength, setCarpetLength] = useState<number>(12);
-  const [carpetWidth, setCarpetWidth] = useState<number>(10);
-  const [carpetSurfaceType, setCarpetSurfaceType] = useState<'room' | 'corridor' | 'rug'>('room');
+  const [carpetSqFt, setCarpetSqFt] = useState<number>(200);
   const [carpetStairsCount, setCarpetStairsCount] = useState<number>(0);
-  const [carpetLandingsCount, setCarpetLandingsCount] = useState<number>(0);
-  const carpetSqFt = Math.max(0, Math.round(carpetLength * carpetWidth));
   const [selectedMattress, setSelectedMattress] = useState<{ [id: string]: number }>({
     'queen': 1
   });
@@ -107,8 +103,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       catAuto: 'Auto / Berline',
       catSuv: 'VUS / SUV',
       catTruckVan: 'Camionnette / Van',
-      carpetSlider: 'Dimensions de la surface à nettoyer',
-      stairsLabel: 'Escaliers — 4 $ / marche',
+      carpetSlider: 'Superficie du tapis (pi²) à 0,30 $/pi² :',
+      stairsLabel: "Marches d'escalier moquettées (5,30 $ / marche) :",
       summaryTitle: 'Votre Estimation Instantanée',
       basePackage: 'Prestation principale',
       extrasLabel: 'Options ajoutées',
@@ -133,8 +129,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       catAuto: 'Легкове авто / Седан',
       catSuv: 'Кросовер / VUS',
       catTruckVan: 'Пікап / Вен',
-      carpetSlider: 'Розміри поверхні для чищення',
-      stairsLabel: 'Сходи — 4 $ / сходинка',
+      carpetSlider: 'Площа килима (кв.фути) по 0,30 $/кв.ф :',
+      stairsLabel: 'Килимові сходинки (5,30 $ за сходинку) :',
       summaryTitle: 'Ваш Розрахунок Вартості',
       basePackage: 'Основна послуга',
       extrasLabel: 'Додаткові опції',
@@ -159,8 +155,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       catAuto: 'Car / Sedan',
       catSuv: 'SUV / Crossover',
       catTruckVan: 'Truck / Van',
-      carpetSlider: 'Surface dimensions to clean',
-      stairsLabel: 'Stairs — $4 / step',
+      carpetSlider: 'Carpet area (sq.ft) at $0.30/sq.ft :',
+      stairsLabel: 'Carpeted stairs ($5.30 / step) :',
       summaryTitle: 'Your Instant Estimate',
       basePackage: 'Main Service',
       extrasLabel: 'Selected add-ons',
@@ -202,11 +198,9 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       duration = '1.5 - 3 h';
     } else if (activeTab === 'carpet') {
       mainName = currentLang === 'fr' ? 'Nettoyage Tapis & Escaliers' : currentLang === 'ua' ? 'Хімчистка килимів та сходів' : 'Carpet & Stairs Deep Extraction';
-      const rate = carpetSurfaceType === 'rug' ? 1.00 : 0.40;
-      const areaCost = carpetSqFt > 0 ? Math.max(carpetSurfaceType === 'rug' ? 0 : 40, Math.round(carpetSqFt * rate)) : 0;
-      const stairsCost = carpetStairsCount * 4;
-      const landingsCost = carpetLandingsCount * 20;
-      basePrice = areaCost + stairsCost + landingsCost;
+      const carpetCost = Math.round(carpetSqFt * 0.30 * 100) / 100;
+      const stairsCost = Math.round(carpetStairsCount * 5.30 * 100) / 100;
+      basePrice = Math.round((carpetCost + stairsCost) * 100) / 100;
       duration = '1 - 2.5 h';
     } else if (activeTab === 'mattress') {
       mainName = currentLang === 'fr' ? 'Désinfection & Nettoyage Matelas' : currentLang === 'ua' ? 'Хімчистка та дезінфекція матраців' : 'Mattress Deep Sanitization';
@@ -236,7 +230,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       hasMinApplied,
       duration
     };
-  }, [activeTab, calcState, selectedFurniture, carpetSqFt, carpetSurfaceType, carpetStairsCount, carpetLandingsCount, selectedMattress, selectedTruckId, currentLang]);
+  }, [activeTab, calcState, selectedFurniture, carpetSqFt, carpetStairsCount, selectedMattress, selectedTruckId, currentLang]);
 
   // Compute unified BookingCart
   const currentCart = useMemo<BookingCart>(() => {
@@ -306,21 +300,19 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       });
     } else if (activeTab === 'carpet') {
       if (carpetSqFt > 0) {
-        const rate = carpetSurfaceType === 'rug' ? 1.00 : 0.40;
-        const carpetCost = Math.max(carpetSurfaceType === 'rug' ? 0 : 40, Math.round(carpetSqFt * rate));
-        const typeLabel = carpetSurfaceType === 'room'
-          ? { fr: 'Pièce complète / moquette', ua: 'Кімната / ковролін', en: 'Full room / carpet' }
-          : carpetSurfaceType === 'corridor'
-          ? { fr: 'Corridor / passage', ua: 'Коридор / прохід', en: 'Corridor / hallway' }
-          : { fr: 'Carpette / tapis amovible', ua: 'Окремий килим', en: 'Area rug' };
+        const carpetCost = Math.round(carpetSqFt * 0.30);
         items.push({
-          id: `carpet_sqft_${carpetSurfaceType}`,
+          id: 'carpet_sqft',
           category: 'carpet',
-          name: typeLabel,
+          name: {
+            fr: `Nettoyage Tapis & Moquette (${carpetSqFt} pi²)`,
+            ua: `Хімчистка килима (${carpetSqFt} кв.фут)`,
+            en: `Carpet Deep Cleaning (${carpetSqFt} sq.ft)`
+          },
           details: {
-            fr: `${carpetLength} × ${carpetWidth} pi = ${carpetSqFt} pi² à ${rate.toFixed(2).replace('.', ',')} $/pi²`,
-            ua: `${carpetLength} × ${carpetWidth} фут = ${carpetSqFt} кв.фут по ${rate.toFixed(2)} $/кв.фут`,
-            en: `${carpetLength} × ${carpetWidth} ft = ${carpetSqFt} sq.ft at $${rate.toFixed(2)}/sq.ft`
+            fr: `${carpetSqFt} pi² à 0,30 $/pi²`,
+            ua: `${carpetSqFt} кв.ф по 0,30 $/кв.ф`,
+            en: `${carpetSqFt} sq.ft at $0.30/sq.ft`
           },
           quantity: 1,
           unitPrice: carpetCost,
@@ -328,19 +320,23 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
         });
       }
       if (carpetStairsCount > 0) {
+        const stairsTotal = Math.round(carpetStairsCount * 5.30 * 100) / 100;
         items.push({
-          id: 'carpet_stairs', category: 'carpet',
-          name: { fr: 'Marches d’escalier moquettées', ua: 'Килимові сходинки', en: 'Carpeted stair steps' },
-          details: { fr: `${carpetStairsCount} marche(s) × 4 $`, ua: `${carpetStairsCount} сход. × 4 $`, en: `${carpetStairsCount} steps × $4` },
-          quantity: carpetStairsCount, unitPrice: 4, totalPrice: 4 * carpetStairsCount
-        });
-      }
-      if (carpetLandingsCount > 0) {
-        items.push({
-          id: 'carpet_landings', category: 'carpet',
-          name: { fr: 'Palier d’escalier', ua: 'Сходова площадка', en: 'Stair landing' },
-          details: { fr: `${carpetLandingsCount} palier(s) × 20 $`, ua: `${carpetLandingsCount} площад. × 20 $`, en: `${carpetLandingsCount} landing(s) × $20` },
-          quantity: carpetLandingsCount, unitPrice: 20, totalPrice: 20 * carpetLandingsCount
+          id: 'carpet_stairs',
+          category: 'carpet',
+          name: {
+            fr: "Marches d'escalier moquettées",
+            ua: 'Килимові сходинки',
+            en: 'Carpeted stairs (steps)'
+          },
+          details: {
+            fr: `${carpetStairsCount} marche(s) à 5,30 $/marche`,
+            ua: `${carpetStairsCount} сходинок(ки) по 5,30 $/сходинка`,
+            en: `${carpetStairsCount} step(s) at $5.30/step`
+          },
+          quantity: carpetStairsCount,
+          unitPrice: 5.30,
+          totalPrice: stairsTotal
         });
       }
     } else if (activeTab === 'mattress') {
@@ -380,7 +376,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
     }
 
     return calculateCartSummary(items, activeTab);
-  }, [activeTab, calcState, selectedFurniture, carpetSqFt, carpetLength, carpetWidth, carpetSurfaceType, carpetStairsCount, carpetLandingsCount, selectedMattress, selectedTruckId]);
+  }, [activeTab, calcState, selectedFurniture, carpetSqFt, carpetStairsCount, selectedMattress, selectedTruckId]);
 
   // Keep parent cart state in sync
   React.useEffect(() => {
@@ -410,26 +406,27 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
   };
 
   return (
-    <section id="calculator" className="py-16 sm:py-20 bg-[#070B08] text-white relative border-b border-[#1A261D]">
+    <section id="tarifs" className="scroll-mt-16">
+      <div id="calculator" className="py-10 sm:py-14 bg-white text-[#122B1E] relative border-b border-[#D5EAD9]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12 space-y-3">
-          <span className="inline-block text-[11px] uppercase tracking-[0.25em] text-[#22C55E] font-mono font-bold bg-[#112417] px-3.5 py-1 rounded-full border border-[#22C55E]/40">
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10 space-y-2">
+          <span className="inline-block text-[11px] uppercase tracking-[0.25em] text-[#15803D] font-mono font-bold bg-[#EAF6EE] px-3.5 py-1 rounded-full border border-[#BEE7CB] shadow-xs">
             {t.eyebrow}
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-heading font-black text-white tracking-tight uppercase">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-black text-[#0D2818] tracking-tight uppercase">
             {t.title}
           </h2>
-          <p className="text-sm text-[#9CA3AF] font-normal leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#3E6552] font-normal leading-relaxed">
             {t.subtitle}
           </p>
 
           {/* Animated Hand/Finger Pointing Cue */}
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <div className="inline-flex items-center gap-2 bg-[#122616] border border-[#22C55E]/60 px-4 py-2 rounded-full shadow-lg shadow-[#22C55E]/10 animate-pulse">
-              <span className="text-2xl animate-bounce select-none">👆</span>
-              <span className="text-xs sm:text-sm font-black uppercase text-[#86EFAC] tracking-wider">
+          <div className="flex items-center justify-center gap-2 pt-1">
+            <div className="inline-flex items-center gap-2 bg-[#EAF6EE] border border-[#BEE7CB] px-4 py-1.5 rounded-full shadow-xs animate-pulse">
+              <span className="text-xl animate-bounce select-none">👆</span>
+              <span className="text-xs font-black uppercase text-[#15803D] tracking-wider">
                 {currentLang === 'fr' 
                   ? 'Cliquez pour choisir votre service (Auto, Sofa, Tapis, Matelas, Camion) :' 
                   : currentLang === 'ua' 
@@ -440,14 +437,14 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
           </div>
 
           {/* Service Category Switcher Tabs */}
-          <div className="flex flex-wrap justify-center gap-2 p-2 rounded-2xl bg-[#0F1A12] border-2 border-[#1E3A23] shadow-2xl mt-4">
+          <div className="flex flex-wrap justify-center gap-2 p-2 rounded-2xl bg-[#F4FAF6] border border-[#D5EAD9] shadow-xs mt-4">
             <button
               type="button"
               onClick={() => handleTabSelect('auto')}
               className={`px-4 sm:px-6 py-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'auto'
-                  ? 'bg-[#22C55E] text-black shadow-lg shadow-[#22C55E]/30 scale-105 ring-2 ring-white/50'
-                  : 'text-[#9CA3AF] hover:text-white bg-[#132216] border border-[#1A3320] hover:border-[#22C55E]/50'
+                  ? 'bg-[#16A34A] text-white shadow-md shadow-[#16A34A]/25 scale-102 ring-2 ring-[#BEE7CB]'
+                  : 'text-[#3E6552] hover:text-[#0D2818] bg-white border border-[#D5EAD9] hover:border-[#16A34A]'
               }`}
             >
               <span>{t.tabAuto}</span>
@@ -457,8 +454,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
               onClick={() => handleTabSelect('furniture')}
               className={`px-4 sm:px-6 py-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'furniture'
-                  ? 'bg-[#22C55E] text-black shadow-lg shadow-[#22C55E]/30 scale-105 ring-2 ring-white/50'
-                  : 'text-[#9CA3AF] hover:text-white bg-[#132216] border border-[#1A3320] hover:border-[#22C55E]/50'
+                  ? 'bg-[#16A34A] text-white shadow-md shadow-[#16A34A]/25 scale-102 ring-2 ring-[#BEE7CB]'
+                  : 'text-[#3E6552] hover:text-[#0D2818] bg-white border border-[#D5EAD9] hover:border-[#16A34A]'
               }`}
             >
               <span>{t.tabFurniture}</span>
@@ -468,8 +465,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
               onClick={() => handleTabSelect('carpet')}
               className={`px-4 sm:px-6 py-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'carpet'
-                  ? 'bg-[#22C55E] text-black shadow-lg shadow-[#22C55E]/30 scale-105 ring-2 ring-white/50'
-                  : 'text-[#9CA3AF] hover:text-white bg-[#132216] border border-[#1A3320] hover:border-[#22C55E]/50'
+                  ? 'bg-[#16A34A] text-white shadow-md shadow-[#16A34A]/25 scale-102 ring-2 ring-[#BEE7CB]'
+                  : 'text-[#3E6552] hover:text-[#0D2818] bg-white border border-[#D5EAD9] hover:border-[#16A34A]'
               }`}
             >
               <span>{t.tabCarpet}</span>
@@ -479,8 +476,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
               onClick={() => handleTabSelect('mattress')}
               className={`px-4 sm:px-6 py-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'mattress'
-                  ? 'bg-[#22C55E] text-black shadow-lg shadow-[#22C55E]/30 scale-105 ring-2 ring-white/50'
-                  : 'text-[#9CA3AF] hover:text-white bg-[#132216] border border-[#1A3320] hover:border-[#22C55E]/50'
+                  ? 'bg-[#16A34A] text-white shadow-md shadow-[#16A34A]/25 scale-102 ring-2 ring-[#BEE7CB]'
+                  : 'text-[#3E6552] hover:text-[#0D2818] bg-white border border-[#D5EAD9] hover:border-[#16A34A]'
               }`}
             >
               <span>{t.tabMattress}</span>
@@ -490,8 +487,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
               onClick={() => handleTabSelect('truck')}
               className={`px-4 sm:px-6 py-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'truck'
-                  ? 'bg-[#22C55E] text-black shadow-lg shadow-[#22C55E]/30 scale-105 ring-2 ring-white/50'
-                  : 'text-[#9CA3AF] hover:text-white bg-[#132216] border border-[#1A3320] hover:border-[#22C55E]/50'
+                  ? 'bg-[#16A34A] text-white shadow-md shadow-[#16A34A]/25 scale-102 ring-2 ring-[#BEE7CB]'
+                  : 'text-[#3E6552] hover:text-[#0D2818] bg-white border border-[#D5EAD9] hover:border-[#16A34A]'
               }`}
             >
               <span>{t.tabTruck}</span>
@@ -508,13 +505,13 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
             {activeTab === 'auto' && (
               <div className="space-y-6 animate-fade-in">
                 {/* Vehicle Category */}
-                <div className="bg-[#0D1810] border-2 border-[#1E3623] rounded-2xl p-5 sm:p-6 space-y-3.5 shadow-xl">
+                <div className="bg-[#F8FCF9] border border-[#D5EAD9] rounded-2xl p-5 sm:p-6 space-y-3.5 shadow-xs">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-heading text-sm sm:text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
-                      <Car className="w-4 h-4 text-[#22C55E]" />
+                    <h3 className="font-heading text-sm sm:text-base font-black text-[#0D2818] uppercase tracking-wider flex items-center gap-2">
+                      <Car className="w-4 h-4 text-[#16A34A]" />
                       <span>{t.step1Auto}</span>
                     </h3>
-                    <span className="text-[11px] font-mono text-[#22C55E] font-bold flex items-center gap-1">
+                    <span className="text-[11px] font-mono text-[#15803D] font-bold flex items-center gap-1">
                       <span className="text-sm animate-bounce">👉</span>
                       {currentLang === 'fr' ? 'Touchez pour choisir :' : currentLang === 'ua' ? 'Оберіть модель :' : 'Select model :'}
                     </span>
@@ -525,47 +522,47 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                       onClick={() => setCalcState(prev => ({ ...prev, vehicleCategory: 'auto' }))}
                       className={`p-3.5 rounded-xl border-2 text-center transition-all cursor-pointer ${
                         calcState.vehicleCategory === 'auto'
-                          ? 'bg-[#18301E] border-[#22C55E] text-white font-bold shadow-lg shadow-[#22C55E]/20 scale-102 ring-1 ring-[#22C55E]'
-                          : 'bg-[#112015] border-[#1C3321] text-[#9CA3AF] hover:text-white hover:border-[#22C55E]/50'
+                          ? 'bg-[#EAF6EE] border-[#16A34A] text-[#0D2818] font-bold shadow-xs scale-102 ring-1 ring-[#16A34A]'
+                          : 'bg-white border-[#D5EAD9] text-[#3E6552] hover:text-[#0D2818] hover:border-[#16A34A]'
                       }`}
                     >
                       <span className="text-2xl block mb-1">🚗</span>
-                      <span className="text-xs font-black block leading-tight text-white">{t.catAuto}</span>
-                      <span className="text-[10px] font-mono text-[#22C55E] block mt-1">dès 99 $</span>
+                      <span className="text-xs font-black block leading-tight text-[#0D2818]">{t.catAuto}</span>
+                      <span className="text-[10px] font-mono text-[#16A34A] block mt-1 font-bold">dès 99 $</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setCalcState(prev => ({ ...prev, vehicleCategory: 'suv' }))}
                       className={`p-3.5 rounded-xl border-2 text-center transition-all cursor-pointer ${
                         calcState.vehicleCategory === 'suv'
-                          ? 'bg-[#18301E] border-[#22C55E] text-white font-bold shadow-lg shadow-[#22C55E]/20 scale-102 ring-1 ring-[#22C55E]'
-                          : 'bg-[#112015] border-[#1C3321] text-[#9CA3AF] hover:text-white hover:border-[#22C55E]/50'
+                          ? 'bg-[#EAF6EE] border-[#16A34A] text-[#0D2818] font-bold shadow-xs scale-102 ring-1 ring-[#16A34A]'
+                          : 'bg-white border-[#D5EAD9] text-[#3E6552] hover:text-[#0D2818] hover:border-[#16A34A]'
                       }`}
                     >
                       <span className="text-2xl block mb-1">🚙</span>
-                      <span className="text-xs font-black block leading-tight text-white">{t.catSuv}</span>
-                      <span className="text-[10px] font-mono text-[#22C55E] block mt-1">dès 119 $</span>
+                      <span className="text-xs font-black block leading-tight text-[#0D2818]">{t.catSuv}</span>
+                      <span className="text-[10px] font-mono text-[#16A34A] block mt-1 font-bold">dès 119 $</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setCalcState(prev => ({ ...prev, vehicleCategory: 'truck_van' }))}
                       className={`p-3.5 rounded-xl border-2 text-center transition-all cursor-pointer ${
                         calcState.vehicleCategory === 'truck_van'
-                          ? 'bg-[#18301E] border-[#22C55E] text-white font-bold shadow-lg shadow-[#22C55E]/20 scale-102 ring-1 ring-[#22C55E]'
-                          : 'bg-[#112015] border-[#1C3321] text-[#9CA3AF] hover:text-white hover:border-[#22C55E]/50'
+                          ? 'bg-[#EAF6EE] border-[#16A34A] text-[#0D2818] font-bold shadow-xs scale-102 ring-1 ring-[#16A34A]'
+                          : 'bg-white border-[#D5EAD9] text-[#3E6552] hover:text-[#0D2818] hover:border-[#16A34A]'
                       }`}
                     >
                       <span className="text-2xl block mb-1">🛻</span>
-                      <span className="text-xs font-black block leading-tight text-white">{t.catTruckVan}</span>
-                      <span className="text-[10px] font-mono text-[#22C55E] block mt-1">dès 139 $</span>
+                      <span className="text-xs font-black block leading-tight text-[#0D2818]">{t.catTruckVan}</span>
+                      <span className="text-[10px] font-mono text-[#16A34A] block mt-1 font-bold">dès 139 $</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Detailing Packages */}
-                <div className="bg-[#0D1810] border border-[#1E3623] rounded-2xl p-5 sm:p-6 space-y-3.5">
-                  <h3 className="font-heading text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#22C55E]" />
+                <div className="bg-[#F8FCF9] border border-[#D5EAD9] rounded-2xl p-5 sm:p-6 space-y-3.5 shadow-xs">
+                  <h3 className="font-heading text-sm font-black text-[#0D2818] uppercase tracking-wider flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#16A34A]" />
                     <span>{t.step2Auto}</span>
                   </h3>
                   <div className="space-y-2.5">
@@ -580,20 +577,20 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                           onClick={() => setCalcState(prev => ({ ...prev, packageId: pkg.id }))}
                           className={`w-full p-3.5 rounded-xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer ${
                             isSelected
-                              ? 'bg-[#162D1D] border-[#22C55E] text-white shadow-md'
-                              : 'bg-[#101E14] border-[#1B3020] text-[#9CA3AF] hover:border-[#22C55E]/40'
+                              ? 'bg-[#EAF6EE] border-[#16A34A] text-[#0D2818] shadow-xs'
+                              : 'bg-white border-[#D5EAD9] text-[#3E6552] hover:border-[#16A34A]'
                           }`}
                         >
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-white uppercase">{pkg.title[currentLang]}</span>
+                              <span className="text-xs font-bold text-[#0D2818] uppercase">{pkg.title[currentLang]}</span>
                               {pkg.popular && (
-                                <span className="text-[9px] bg-[#22C55E] text-black px-1.5 py-0.5 rounded font-black">RECOMMANDÉ</span>
+                                <span className="text-[9px] bg-[#16A34A] text-white px-2 py-0.5 rounded font-black">RECOMMANDÉ</span>
                               )}
                             </div>
-                            <span className="text-[11px] text-[#9CA3AF] block mt-0.5">{pkg.tagline[currentLang]}</span>
+                            <span className="text-[11px] text-[#4F7A64] block mt-0.5">{pkg.tagline[currentLang]}</span>
                           </div>
-                          <span className="font-mono font-black text-sm text-[#22C55E] shrink-0 bg-[#0C150E] px-2.5 py-1 rounded border border-[#22C55E]/30">
+                          <span className="font-mono font-black text-sm text-[#15803D] shrink-0 bg-white px-2.5 py-1 rounded border border-[#BEE7CB]">
                             {price} $
                           </span>
                         </button>
@@ -603,9 +600,9 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                 </div>
 
                 {/* Add-ons */}
-                <div className="bg-[#0D1810] border border-[#1E3623] rounded-2xl p-5 sm:p-6 space-y-3.5">
-                  <h3 className="font-heading text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                    <PlusCircle className="w-4 h-4 text-[#22C55E]" />
+                <div className="bg-[#F8FCF9] border border-[#D5EAD9] rounded-2xl p-5 sm:p-6 space-y-3.5 shadow-xs">
+                  <h3 className="font-heading text-sm font-black text-[#0D2818] uppercase tracking-wider flex items-center gap-2">
+                    <PlusCircle className="w-4 h-4 text-[#16A34A]" />
                     <span>{t.step3Extras}</span>
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -618,19 +615,19 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                           onClick={() => handleToggleExtra(extra.id)}
                           className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
                             isChecked
-                              ? 'bg-[#152B1B] border-[#22C55E] text-white'
-                              : 'bg-[#101E14] border-[#1B3020] text-[#9CA3AF]'
+                              ? 'bg-[#EAF6EE] border-[#16A34A] text-[#0D2818]'
+                              : 'bg-white border-[#D5EAD9] text-[#3E6552]'
                           }`}
                         >
                           <div className="flex items-center gap-2">
                             <div className={`w-4 h-4 rounded flex items-center justify-center ${
-                              isChecked ? 'bg-[#22C55E] text-black' : 'border border-[#333]'
+                              isChecked ? 'bg-[#16A34A] text-white' : 'border border-[#C6ECCF]'
                             }`}>
                               {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                             </div>
-                            <span className="text-xs font-bold text-white">{extra.name[currentLang]}</span>
+                            <span className="text-xs font-bold text-[#0D2818]">{extra.name[currentLang]}</span>
                           </div>
-                          <span className="text-xs font-mono text-[#22C55E] font-bold">+{extra.price} $</span>
+                          <span className="text-xs font-mono text-[#15803D] font-bold">+{extra.price} $</span>
                         </button>
                       );
                     })}
@@ -641,19 +638,19 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
 
             {/* TAB 2: FURNITURE (SOFAS) */}
             {activeTab === 'furniture' && (
-              <div className="bg-[#0D1810] border border-[#1E3623] rounded-2xl p-5 sm:p-6 space-y-4 animate-fade-in">
-                <h3 className="font-heading text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                  <Armchair className="w-4 h-4 text-[#22C55E]" />
+              <div className="bg-[#F8FCF9] border border-[#D5EAD9] rounded-2xl p-5 sm:p-6 space-y-4 animate-fade-in shadow-xs">
+                <h3 className="font-heading text-sm font-black text-[#0D2818] uppercase tracking-wider flex items-center gap-2">
+                  <Armchair className="w-4 h-4 text-[#16A34A]" />
                   <span>Sélectionnez vos sofas & meubles</span>
                 </h3>
                 <div className="space-y-3">
                   {FURNITURE_SERVICES.map((item) => {
                     const count = selectedFurniture[item.id] || 0;
                     return (
-                      <div key={item.id} className="p-3.5 rounded-xl bg-[#112115] border border-[#1C3622] flex items-center justify-between gap-3">
+                      <div key={item.id} className="p-3.5 rounded-xl bg-white border border-[#D5EAD9] flex items-center justify-between gap-3">
                         <div>
-                          <span className="text-xs font-bold text-white block">{item.name[currentLang]}</span>
-                          <span className="text-xs font-mono font-bold text-[#22C55E]">{item.price} $ / unité</span>
+                          <span className="text-xs font-bold text-[#0D2818] block">{item.name[currentLang]}</span>
+                          <span className="text-xs font-mono font-bold text-[#15803D]">{item.price} $ / unité</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -662,18 +659,18 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                               ...prev,
                               [item.id]: Math.max(0, (prev[item.id] || 0) - 1)
                             }))}
-                            className="w-7 h-7 rounded-lg bg-[#182C1D] border border-[#22C55E]/40 text-white font-bold flex items-center justify-center hover:bg-[#22C55E] hover:text-black transition-colors"
+                            className="w-7 h-7 rounded-lg bg-[#EAF6EE] border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer"
                           >
                             -
                           </button>
-                          <span className="w-6 text-center font-mono font-bold text-sm text-white">{count}</span>
+                          <span className="w-6 text-center font-mono font-bold text-sm text-[#0D2818]">{count}</span>
                           <button
                             type="button"
                             onClick={() => setSelectedFurniture(prev => ({
                               ...prev,
                               [item.id]: (prev[item.id] || 0) + 1
                             }))}
-                            className="w-7 h-7 rounded-lg bg-[#182C1D] border border-[#22C55E]/40 text-white font-bold flex items-center justify-center hover:bg-[#22C55E] hover:text-black transition-colors"
+                            className="w-7 h-7 rounded-lg bg-[#EAF6EE] border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer"
                           >
                             +
                           </button>
@@ -687,55 +684,82 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
 
             {/* TAB 3: CARPETS & STAIRS */}
             {activeTab === 'carpet' && (
-              <div className="bg-[#0D1810] border border-[#1E3623] rounded-2xl p-5 sm:p-6 space-y-5 animate-fade-in">
-                <div>
-                  <h3 className="font-heading text-sm font-black text-white uppercase tracking-wider mb-3">{t.carpetSlider}</h3>
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    {(['room','corridor','rug'] as const).map(type => {
-                      const labels = {
-                        room: currentLang === 'fr' ? 'Pièce' : currentLang === 'ua' ? 'Кімната' : 'Room',
-                        corridor: currentLang === 'fr' ? 'Corridor' : currentLang === 'ua' ? 'Коридор' : 'Corridor',
-                        rug: currentLang === 'fr' ? 'Carpette' : currentLang === 'ua' ? 'Килим' : 'Area rug'
-                      };
-                      return <button key={type} type="button" onClick={() => setCarpetSurfaceType(type)} className={`p-2.5 rounded-xl border text-xs font-bold ${carpetSurfaceType===type?'bg-[#162D1D] border-[#22C55E] text-white':'bg-[#101E14] border-[#1B3020] text-[#9CA3AF]'}`}>{labels[type]}</button>;
-                    })}
+              <div className="bg-[#F8FCF9] border border-[#D5EAD9] rounded-2xl p-5 sm:p-6 space-y-6 animate-fade-in shadow-xs">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-[#0D2818] font-bold uppercase">{t.carpetSlider}</span>
+                    <span className="text-[#15803D] font-mono font-black text-sm bg-white px-3 py-1 rounded border border-[#BEE7CB]">
+                      {carpetSqFt} pi² ({Math.round(carpetSqFt * 0.30)} $)
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="text-xs text-[#D1D5DB]">{currentLang==='fr'?'Longueur (pi)':currentLang==='ua'?'Довжина (фут)':'Length (ft)'}
-                      <input type="number" min="0" step="0.5" value={carpetLength} onChange={e=>setCarpetLength(Math.max(0,Number(e.target.value)))} className="mt-1 w-full bg-[#080E0A] rounded-xl px-3 py-2.5 text-white border border-[#203926] focus:border-[#22C55E] focus:outline-none" />
-                    </label>
-                    <label className="text-xs text-[#D1D5DB]">{currentLang==='fr'?'Largeur (pi)':currentLang==='ua'?'Ширина (фут)':'Width (ft)'}
-                      <input type="number" min="0" step="0.5" value={carpetWidth} onChange={e=>setCarpetWidth(Math.max(0,Number(e.target.value)))} className="mt-1 w-full bg-[#080E0A] rounded-xl px-3 py-2.5 text-white border border-[#203926] focus:border-[#22C55E] focus:outline-none" />
-                    </label>
-                  </div>
-                  <div className="mt-3 flex justify-between items-center p-3 rounded-xl bg-[#112115] border border-[#1C3622]">
-                    <span className="text-xs text-[#9CA3AF]">{carpetSqFt} pi² • {carpetSurfaceType==='rug'?'1,00':'0,40'} $/pi²</span>
-                    <span className="text-[#22C55E] font-mono font-black">{carpetSqFt > 0 ? Math.max(carpetSurfaceType==='rug'?0:40, Math.round(carpetSqFt*(carpetSurfaceType==='rug'?1:0.4))) : 0} $</span>
+                  <input
+                    type="range"
+                    min="50"
+                    max="1500"
+                    step="25"
+                    value={carpetSqFt}
+                    onChange={(e) => setCarpetSqFt(parseInt(e.target.value))}
+                    className="w-full cursor-pointer accent-[#16A34A]"
+                  />
+                  <div className="flex justify-between text-[10px] text-[#527964] font-mono">
+                    <span>50 pi² (15 $)</span>
+                    <span>500 pi² (150 $)</span>
+                    <span>1500 pi² (450 $)</span>
                   </div>
                 </div>
-                <div className="pt-4 border-t border-[#1A3320] space-y-3">
-                  <div className="flex items-center justify-between"><div><span className="text-xs font-bold text-white block">{t.stairsLabel}</span><span className="text-[11px] text-[#9CA3AF]">{currentLang==='fr'?'Entrez le nombre réel de marches':currentLang==='ua'?'Вкажіть точну кількість сходинок':'Enter the actual number of steps'}</span></div><input type="number" min="0" value={carpetStairsCount} onChange={e=>setCarpetStairsCount(Math.max(0,parseInt(e.target.value)||0))} className="w-20 bg-[#080E0A] rounded-xl px-3 py-2 text-center text-white border border-[#203926]" /></div>
-                  <div className="flex items-center justify-between"><div><span className="text-xs font-bold text-white block">{currentLang==='fr'?'Palier — 20 $ / unité':currentLang==='ua'?'Площадка — 20 $ / шт.':'Landing — $20 each'}</span></div><input type="number" min="0" value={carpetLandingsCount} onChange={e=>setCarpetLandingsCount(Math.max(0,parseInt(e.target.value)||0))} className="w-20 bg-[#080E0A] rounded-xl px-3 py-2 text-center text-white border border-[#203926]" /></div>
+
+                <div className="pt-4 border-t border-[#EAF5ED] flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-[#0D2818] block">{t.stairsLabel}</span>
+                    <span className="text-[11px] text-[#4F7A64]">
+                      {currentLang === 'fr' 
+                        ? 'Extraction complète marches & contremarches' 
+                        : currentLang === 'ua' 
+                        ? 'Повна хімчистка сходинок та підсходинок' 
+                        : 'Full deep extraction steps & risers'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCarpetStairsCount(prev => Math.max(0, prev - 1))}
+                      className="w-7 h-7 rounded-lg bg-[#EAF6EE] border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer"
+                    >
+                      -
+                    </button>
+                    <span className="w-8 text-center font-mono font-bold text-sm text-[#0D2818]">{carpetStairsCount}</span>
+                    <button
+                      type="button"
+                      onClick={() => setCarpetStairsCount(prev => prev + 1)}
+                      className="w-7 h-7 rounded-lg bg-[#EAF6EE] border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer"
+                    >
+                      +
+                    </button>
+                    {carpetStairsCount > 0 && (
+                      <span className="text-xs font-mono font-bold text-[#15803D] bg-white px-2 py-1 rounded border border-[#BEE7CB] ml-1">
+                        {(carpetStairsCount * 5.30).toFixed(2)} $
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-[11px] text-[#9CA3AF] p-3 bg-[#0A120C] rounded-xl border border-[#1A3320]">{currentLang==='fr'?'Minimum de commande mobile : 80 $. Petite surface de moquette : minimum 40 $. Le prix final peut varier selon les taches et l’état.':currentLang==='ua'?'Мінімальне мобільне замовлення: 80 $. Мала площа ковроліну: мінімум 40 $. Фінальна ціна може змінитися через сильні плями або стан.':'Mobile order minimum: $80. Small carpeted surface minimum: $40. Final price may vary for heavy stains/condition.'}</div>
               </div>
             )}
 
             {/* TAB 4: MATTRESS */}
             {activeTab === 'mattress' && (
-              <div className="bg-[#0D1810] border border-[#1E3623] rounded-2xl p-5 sm:p-6 space-y-4 animate-fade-in">
-                <h3 className="font-heading text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                  <Bed className="w-4 h-4 text-[#22C55E]" />
+              <div className="bg-[#F8FCF9] border border-[#D5EAD9] rounded-2xl p-5 sm:p-6 space-y-4 animate-fade-in shadow-xs">
+                <h3 className="font-heading text-sm font-black text-[#0D2818] uppercase tracking-wider flex items-center gap-2">
+                  <Bed className="w-4 h-4 text-[#16A34A]" />
                   <span>Sélectionnez vos matelas à désinfecter</span>
                 </h3>
                 <div className="space-y-3">
                   {MATTRESS_SERVICES.map((item) => {
                     const count = selectedMattress[item.id] || 0;
                     return (
-                      <div key={item.id} className="p-3.5 rounded-xl bg-[#112115] border border-[#1C3622] flex items-center justify-between gap-3">
+                      <div key={item.id} className="p-3.5 rounded-xl bg-white border border-[#D5EAD9] flex items-center justify-between gap-3">
                         <div>
-                          <span className="text-xs font-bold text-white block">{item.name[currentLang]}</span>
-                          <span className="text-xs font-mono font-bold text-[#22C55E]">{item.price} $ / unité</span>
+                          <span className="text-xs font-bold text-[#0D2818] block">{item.name[currentLang]}</span>
+                          <span className="text-xs font-mono font-bold text-[#15803D]">{item.price} $ / unité</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -744,18 +768,18 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                               ...prev,
                               [item.id]: Math.max(0, (prev[item.id] || 0) - 1)
                             }))}
-                            className="w-7 h-7 rounded-lg bg-[#182C1D] border border-[#22C55E]/40 text-white font-bold flex items-center justify-center hover:bg-[#22C55E] hover:text-black transition-colors"
+                            className="w-7 h-7 rounded-lg bg-[#EAF6EE] border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer"
                           >
                             -
                           </button>
-                          <span className="w-6 text-center font-mono font-bold text-sm text-white">{count}</span>
+                          <span className="w-6 text-center font-mono font-bold text-sm text-[#0D2818]">{count}</span>
                           <button
                             type="button"
                             onClick={() => setSelectedMattress(prev => ({
                               ...prev,
                               [item.id]: (prev[item.id] || 0) + 1
                             }))}
-                            className="w-7 h-7 rounded-lg bg-[#182C1D] border border-[#22C55E]/40 text-white font-bold flex items-center justify-center hover:bg-[#22C55E] hover:text-black transition-colors"
+                            className="w-7 h-7 rounded-lg bg-[#EAF6EE] border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer"
                           >
                             +
                           </button>
@@ -769,9 +793,9 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
 
             {/* TAB 5: TRUCKS & RVS */}
             {activeTab === 'truck' && (
-              <div className="bg-[#0D1810] border border-[#1E3623] rounded-2xl p-5 sm:p-6 space-y-4 animate-fade-in">
-                <h3 className="font-heading text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-[#22C55E]" />
+              <div className="bg-[#F8FCF9] border border-[#D5EAD9] rounded-2xl p-5 sm:p-6 space-y-4 animate-fade-in shadow-xs">
+                <h3 className="font-heading text-sm font-black text-[#0D2818] uppercase tracking-wider flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-[#16A34A]" />
                   <span>Poids Lourds & Véhicules Récréatifs</span>
                 </h3>
                 <div className="space-y-3">
@@ -782,15 +806,15 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                       onClick={() => setSelectedTruckId(item.id)}
                       className={`w-full p-3.5 rounded-xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer ${
                         selectedTruckId === item.id
-                          ? 'bg-[#18301E] border-[#22C55E] text-white shadow-md'
-                          : 'bg-[#112115] border-[#1C3622] text-[#9CA3AF]'
+                          ? 'bg-[#EAF6EE] border-[#16A34A] text-[#0D2818] shadow-xs'
+                          : 'bg-white border-[#D5EAD9] text-[#3E6552]'
                       }`}
                     >
                       <div>
-                        <span className="text-xs font-bold text-white block">{item.name[currentLang]}</span>
-                        <span className="text-[11px] text-[#9CA3AF]">{item.description[currentLang]}</span>
+                        <span className="text-xs font-bold text-[#0D2818] block">{item.name[currentLang]}</span>
+                        <span className="text-[11px] text-[#4F7A64]">{item.description[currentLang]}</span>
                       </div>
-                      <span className="font-mono font-bold text-xs text-[#22C55E] shrink-0 bg-[#0C150E] px-2 py-1 rounded border border-[#22C55E]/30">
+                      <span className="font-mono font-bold text-xs text-[#15803D] shrink-0 bg-white px-2.5 py-1 rounded border border-[#BEE7CB]">
                         {item.priceFrom}
                       </span>
                     </button>
@@ -803,64 +827,68 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
 
           {/* Right / Instant Summary Card (5 cols) */}
           <div className="lg:col-span-5">
-            <div className="bg-[#0C150F] border-2 border-[#1E3A24] rounded-2xl p-6 sm:p-7 shadow-2xl space-y-5 sticky top-28">
+            <div className="bg-[#F8FCF9] border-2 border-[#16A34A] rounded-2xl p-6 sm:p-7 shadow-lg space-y-5 sticky top-28">
               
-              <div className="border-b border-[#1A301E] pb-3.5 flex items-center justify-between">
+              <div className="border-b border-[#D5EAD9] pb-3.5 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#22C55E] font-bold block">
+                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#15803D] font-bold block">
                     SOUMISSION DIRECTE
                   </span>
-                  <h3 className="font-heading text-lg font-black text-white uppercase">
+                  <h3 className="font-heading text-lg font-black text-[#0D2818] uppercase">
                     {t.summaryTitle}
                   </h3>
                 </div>
-                <div className="w-8 h-8 rounded-lg bg-[#142618] border border-[#22C55E]/40 flex items-center justify-center text-[#22C55E] text-xs font-bold">
+                <div className="w-8 h-8 rounded-lg bg-[#EAF6EE] border border-[#BEE7CB] flex items-center justify-center text-[#15803D] text-xs font-bold">
                   360°
                 </div>
               </div>
 
               <div className="space-y-3 text-xs">
-                <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#112115] border border-[#1C3622]">
-                  <span className="text-[#9CA3AF]">{t.basePackage} :</span>
-                  <span className="text-white font-bold text-right">{calculation.mainName}</span>
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-[#D5EAD9]">
+                  <span className="text-[#3E6552]">{t.basePackage} :</span>
+                  <span className="text-[#0D2818] font-bold text-right">{calculation.mainName}</span>
                 </div>
 
-                <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#112115] border border-[#1C3622]">
-                  <span className="text-[#9CA3AF]">{t.estimatedTime}</span>
-                  <span className="text-[#22C55E] font-mono font-bold">{calculation.duration}</span>
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-[#D5EAD9]">
+                  <span className="text-[#3E6552]">{t.estimatedTime}</span>
+                  <span className="text-[#15803D] font-mono font-bold">{calculation.duration}</span>
                 </div>
 
                 {calculation.extrasSum > 0 && (
-                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#112115] border border-[#1C3622]">
-                    <span className="text-[#9CA3AF]">{t.extrasLabel} :</span>
-                    <span className="text-[#22C55E] font-mono font-bold">+{calculation.extrasSum} $</span>
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-[#D5EAD9]">
+                    <span className="text-[#3E6552]">{t.extrasLabel} :</span>
+                    <span className="text-[#15803D] font-mono font-bold">+{calculation.extrasSum} $</span>
                   </div>
                 )}
               </div>
 
               {/* Total display */}
-              <div className="p-4 rounded-xl bg-gradient-to-br from-[#122618] to-[#0A160E] border border-[#22C55E]/50 flex items-baseline justify-between">
+              <div className="p-4 rounded-xl bg-gradient-to-br from-[#EAF6EE] to-[#DCF2E2] border border-[#BEE7CB] flex items-baseline justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-mono text-[#86EFAC] block font-bold">
+                  <span className="text-[10px] uppercase font-mono text-[#15803D] block font-bold">
                     {t.totalEstimated}
                   </span>
-                  <span className="font-heading text-4xl font-black text-white">
-                    {calculation.finalDisplayTotal} $
+                  <span className="font-heading text-4xl font-black text-[#0D2818]">
+                    {typeof calculation.finalDisplayTotal === 'number'
+                      ? (calculation.finalDisplayTotal % 1 === 0
+                          ? calculation.finalDisplayTotal
+                          : calculation.finalDisplayTotal.toFixed(2))
+                      : calculation.finalDisplayTotal} $
                   </span>
-                  <span className="text-[10px] text-[#9CA3AF] block font-mono">
+                  <span className="text-[10px] text-[#3E6552] block font-mono">
                     CAD • Déplacement local inclus
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[9px] uppercase font-mono text-[#22C55E] bg-black/50 px-2 py-1 rounded border border-[#22C55E]/30">
+                  <span className="text-[9px] uppercase font-mono text-[#15803D] bg-white/80 px-2 py-1 rounded border border-[#BEE7CB]">
                     Sans acompte
                   </span>
                 </div>
               </div>
 
               {/* Minimum note notice if adjusted */}
-              <div className="p-2.5 rounded-lg bg-[#0F1C13] border border-[#1B3521] text-[11px] text-[#86EFAC] flex items-start gap-2">
-                <Info className="w-4 h-4 text-[#22C55E] shrink-0 mt-0.5" />
+              <div className="p-2.5 rounded-lg bg-[#EAF6EE] border border-[#BEE7CB] text-[11px] text-[#15803D] flex items-start gap-2">
+                <Info className="w-4 h-4 text-[#16A34A] shrink-0 mt-0.5" />
                 <span>{t.minNotice}</span>
               </div>
 
@@ -868,13 +896,13 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
               <button
                 type="button"
                 onClick={handleBook}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-[#16A34A] via-[#22C55E] to-[#15803D] hover:brightness-110 active:scale-95 text-white font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#16A34A]/30 border border-[#86EFAC]/40"
+                className="w-full py-4 rounded-xl bg-[#16A34A] hover:bg-[#15803D] active:scale-95 text-white font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#16A34A]/25 border border-[#16A34A]"
               >
                 <span>{t.btnBookThis}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
-              <p className="text-[10px] text-[#6B7280] text-center leading-relaxed">
+              <p className="text-[10px] text-[#527964] text-center leading-relaxed">
                 {t.disclaimer}
               </p>
 
@@ -883,6 +911,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
 
         </div>
 
+      </div>
       </div>
     </section>
   );

@@ -86,76 +86,76 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
   }[currentLang];
 
   return (
-    <section id="forfaits" className="py-16 sm:py-20 bg-[#080D09] text-white relative border-b border-[#1A261D]">
+    <section id="forfaits" className="py-8 sm:py-12 bg-[#080D09] text-white relative border-b border-[#1A261D]">
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         
         {/* Section Heading */}
-        <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12 space-y-3">
+        <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-8 space-y-2">
           {isAutoPromoActive() && (
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#DC2626]/20 via-[#F97316]/20 to-[#22C55E]/20 border border-[#F97316] text-[#FED7AA] px-4 py-1.5 rounded-full text-xs font-mono font-bold shadow-lg animate-pulse mb-2">
-              <Flame className="w-4 h-4 text-[#F97316]" />
+            <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-[#DC2626]/20 via-[#F97316]/20 to-[#22C55E]/20 border border-[#F97316] text-[#FED7AA] px-3 py-1 rounded-full text-[11px] font-mono font-bold shadow-sm animate-pulse mb-1">
+              <Flame className="w-3.5 h-3.5 text-[#F97316]" />
               <span>{AUTO_LAUNCH_PROMO.title[currentLang] || AUTO_LAUNCH_PROMO.title.fr}</span>
             </div>
           )}
           
           <div>
-            <span className="inline-block text-[11px] uppercase tracking-[0.25em] text-[#22C55E] font-mono font-bold bg-[#0F1E13] px-3.5 py-1 rounded-full border border-[#22C55E]/40">
+            <span className="inline-block text-[10px] uppercase tracking-[0.25em] text-[#22C55E] font-mono font-bold bg-[#0F1E13] px-3 py-0.5 rounded-full border border-[#22C55E]/40">
               {t.eyebrow}
             </span>
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-heading font-black text-white tracking-tight uppercase">
+          <h2 className="text-2xl sm:text-3xl font-heading font-black text-white tracking-tight uppercase">
             {t.title}
           </h2>
-          <p className="text-sm text-[#9CA3AF] font-normal leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#9CA3AF] font-normal leading-relaxed">
             {t.subtitle}
           </p>
 
           {/* Vehicle Category Switcher Tabs matching the flyer (Auto, VUS, Camionnette/Van) */}
-          <div className="inline-flex flex-wrap justify-center p-1.5 rounded-xl bg-[#0F1A12] border border-[#1E3322] shadow-inner mt-4 gap-1">
+          <div className="inline-flex flex-wrap justify-center p-1 rounded-lg bg-[#0F1A12] border border-[#1E3322] shadow-inner mt-2.5 gap-1">
             <button
               type="button"
               onClick={() => setSelectedVehicleType('auto')}
-              className={`px-4 sm:px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-3 sm:px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                 selectedVehicleType === 'auto'
-                  ? 'bg-gradient-to-r from-[#16A34A] to-[#22C55E] text-white shadow-md'
+                  ? 'bg-gradient-to-r from-[#16A34A] to-[#22C55E] text-white shadow-xs'
                   : 'text-[#9CA3AF] hover:text-white'
               }`}
             >
-              <Car className="w-3.5 h-3.5" />
+              <Car className="w-3 h-3" />
               <span>{t.btnAuto}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setSelectedVehicleType('suv')}
-              className={`px-4 sm:px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-3 sm:px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                 selectedVehicleType === 'suv'
-                  ? 'bg-gradient-to-r from-[#16A34A] to-[#22C55E] text-white shadow-md'
+                  ? 'bg-gradient-to-r from-[#16A34A] to-[#22C55E] text-white shadow-xs'
                   : 'text-[#9CA3AF] hover:text-white'
               }`}
             >
-              <Car className="w-3.5 h-3.5" />
+              <Car className="w-3 h-3" />
               <span>{t.btnSuv}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setSelectedVehicleType('truck_van')}
-              className={`px-4 sm:px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-3 sm:px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                 selectedVehicleType === 'truck_van'
-                  ? 'bg-gradient-to-r from-[#16A34A] to-[#22C55E] text-white shadow-md'
+                  ? 'bg-gradient-to-r from-[#16A34A] to-[#22C55E] text-white shadow-xs'
                   : 'text-[#9CA3AF] hover:text-white'
               }`}
             >
-              <Truck className="w-3.5 h-3.5" />
+              <Truck className="w-3 h-3" />
               <span>{t.btnTruckVan}</span>
             </button>
           </div>
         </div>
 
         {/* 3 Package Cards Grid directly matching flyer cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-7 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch">
           {DETAILING_PACKAGES.map((pkg) => {
             const rawPrice = pkg.prices[selectedVehicleType] || pkg.prices.auto;
             const priceInfo = calculateServicePrice(rawPrice, selectedVehicleType);
@@ -165,20 +165,20 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
             return (
               <div
                 key={pkg.id}
-                className={`rounded-2xl flex flex-col justify-between transition-all duration-300 relative overflow-hidden ${
+                className={`rounded-xl flex flex-col justify-between transition-all duration-300 relative overflow-hidden ${
                   isFeatured
-                    ? 'bg-gradient-to-b from-[#112316] to-[#0A140D] border-2 border-[#22C55E] shadow-2xl shadow-[#22C55E]/15 lg:-translate-y-2'
+                    ? 'bg-gradient-to-b from-[#112316] to-[#0A140D] border-2 border-[#22C55E] shadow-xl shadow-[#22C55E]/15'
                     : isRejuvenation
-                    ? 'bg-[#0E1711] border border-[#F97316]/50 hover:border-[#F97316] shadow-xl'
-                    : 'bg-[#0B130E] border border-[#1D2E20] hover:border-[#22C55E]/40'
+                    ? 'bg-[#0E1711] border border-[#F97316]/50 hover:border-[#F97316] shadow-md'
+                    : 'bg-[#0B130E] border border-[#1D2E20] hover:border-[#22C55E]/40 shadow-xs'
                 }`}
               >
                 {/* Header Tag / Badge */}
-                <div className="p-6 sm:p-7 space-y-4">
+                <div className="p-4 sm:p-5 space-y-3">
                   
                   <div className="flex items-center justify-between">
                     {pkg.badge ? (
-                      <span className={`text-[10px] uppercase tracking-widest px-3 py-1 rounded-full font-mono font-black ${
+                      <span className={`text-[9px] uppercase tracking-widest px-2.5 py-0.5 rounded-full font-mono font-black ${
                         isFeatured
                           ? 'bg-[#22C55E] text-black'
                           : isRejuvenation
@@ -189,69 +189,69 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
                       </span>
                     ) : <div></div>}
 
-                    <div className="flex items-center gap-1 text-[11px] text-[#9CA3AF] font-mono">
-                      <Clock className="w-3.5 h-3.5 text-[#22C55E]" />
+                    <div className="flex items-center gap-1 text-[10px] text-[#9CA3AF] font-mono">
+                      <Clock className="w-3 h-3 text-[#22C55E]" />
                       <span>{pkg.duration[currentLang]}</span>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="font-heading text-xl sm:text-2xl font-black text-white uppercase">
+                    <h3 className="font-heading text-lg sm:text-xl font-black text-white uppercase">
                       {pkg.title[currentLang]}
                     </h3>
-                    <p className="text-xs text-[#9CA3AF] mt-1.5 leading-relaxed min-h-[36px]">
+                    <p className="text-xs text-[#9CA3AF] mt-1 leading-relaxed min-h-[30px]">
                       {pkg.tagline[currentLang]}
                     </p>
                   </div>
 
                   {/* Price Block with Launch Promo Support */}
-                  <div className="pt-3 border-t border-[#1A2D1F] flex items-baseline justify-between">
+                  <div className="pt-2.5 border-t border-[#1A2D1F] flex items-baseline justify-between">
                     <div>
                       {isRejuvenation && (
-                        <span className="text-[11px] text-[#F97316] uppercase font-mono font-bold block">
+                        <span className="text-[10px] text-[#F97316] uppercase font-mono font-bold block">
                           À partir de
                         </span>
                       )}
                       
                       {priceInfo.isPromoApplied ? (
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="line-through text-[#6B7280] text-lg font-mono font-bold">
+                          <div className="flex items-center gap-1.5">
+                            <span className="line-through text-[#6B7280] text-base font-mono font-bold">
                               {priceInfo.regularPrice} $
                             </span>
-                            <span className="font-heading text-4xl sm:text-5xl font-black text-[#22C55E]">
+                            <span className="font-heading text-3xl sm:text-4xl font-black text-[#22C55E]">
                               {priceInfo.finalPrice} $
                             </span>
-                            <span className="bg-[#F97316] text-black text-[10px] uppercase font-mono font-black px-1.5 py-0.5 rounded shadow">
+                            <span className="bg-[#F97316] text-black text-[9px] uppercase font-mono font-black px-1.5 py-0.5 rounded shadow-xs">
                               PROMO
                             </span>
                           </div>
                         </div>
                       ) : (
-                        <span className="font-heading text-4xl sm:text-5xl font-black text-white">
+                        <span className="font-heading text-3xl sm:text-4xl font-black text-white">
                           {priceInfo.regularPrice} $
                         </span>
                       )}
 
-                      <span className="text-[10px] text-[#6B7280] block font-mono">
+                      <span className="text-[9px] text-[#6B7280] block font-mono">
                         CAD • {selectedVehicleType === 'auto' ? 'Auto' : selectedVehicleType === 'suv' ? 'VUS' : 'Camionnette / Van'}
                       </span>
                     </div>
 
                     <div className="text-right">
-                      <span className="text-[10px] uppercase font-mono text-[#86EFAC] bg-[#112417] px-2 py-1 rounded border border-[#22C55E]/30">
+                      <span className="text-[9px] uppercase font-mono text-[#86EFAC] bg-[#112417] px-1.5 py-0.5 rounded border border-[#22C55E]/30">
                         {isFeatured ? 'Extraction Pro' : isRejuvenation ? 'Nettoyage Intensif' : 'Lavage Rapide'}
                       </span>
                     </div>
                   </div>
 
                   {/* Features list */}
-                  <div className="space-y-2.5 pt-4 border-t border-[#1A2D1F]">
-                    <span className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-mono font-bold block">
+                  <div className="space-y-1.5 pt-3 border-t border-[#1A2D1F]">
+                    <span className="text-[9px] uppercase tracking-wider text-[#9CA3AF] font-mono font-bold block">
                       Services inclus :
                     </span>
                     {pkg.features[currentLang].map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-xs text-[#D1D5DB]">
+                      <div key={idx} className="flex items-start gap-1.5 text-xs text-[#D1D5DB]">
                         <Check className="w-3.5 h-3.5 text-[#22C55E] shrink-0 mt-0.5" />
                         <span className="leading-snug">{feature}</span>
                       </div>
@@ -261,11 +261,11 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
                 </div>
 
                 {/* Card Bottom CTA */}
-                <div className="p-6 sm:p-7 pt-0">
+                <div className="p-4 sm:p-5 pt-0">
                   <button
                     type="button"
                     onClick={() => onSelectPackage(pkg.id, selectedVehicleType)}
-                    className={`w-full py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
+                    className={`w-full py-2.5 rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
                       isFeatured
                         ? 'bg-gradient-to-r from-[#16A34A] via-[#22C55E] to-[#15803D] hover:brightness-110 text-white shadow-[#16A34A]/25 border border-[#86EFAC]/40'
                         : isRejuvenation
@@ -274,7 +274,7 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
                     }`}
                   >
                     <span>{t.ctaSelect}</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
@@ -284,42 +284,42 @@ export const PricingPackages: React.FC<PricingPackagesProps> = ({
         </div>
 
         {/* Add-ons & Options Section (Matching Flyer Bottom Left Card) */}
-        <div className="mt-12 bg-[#0C150F] border border-[#1E3623] rounded-2xl p-6 sm:p-8 shadow-xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#1A301E] pb-4 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#122316] border border-[#22C55E]/40 flex items-center justify-center text-[#22C55E]">
-                <PlusCircle className="w-5 h-5" />
+        <div className="mt-6 bg-[#0C150F] border border-[#1E3623] rounded-xl p-4 sm:p-5 shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1A301E] pb-3 mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#122316] border border-[#22C55E]/40 flex items-center justify-center text-[#22C55E]">
+                <PlusCircle className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-heading text-lg sm:text-xl font-black text-white uppercase">
+                <h3 className="font-heading text-sm sm:text-base font-black text-white uppercase">
                   {t.optionsTitle}
                 </h3>
-                <p className="text-xs text-[#9CA3AF]">
+                <p className="text-[11px] text-[#9CA3AF]">
                   {t.optionsNote}
                 </p>
               </div>
             </div>
 
-            <div className="text-xs font-mono text-[#86EFAC] bg-[#122617] px-3 py-1.5 rounded-lg border border-[#22C55E]/40 self-start sm:self-auto">
+            <div className="text-[10px] font-mono text-[#86EFAC] bg-[#122617] px-2.5 py-1 rounded-md border border-[#22C55E]/40 self-start sm:self-auto">
               {t.minServiceBadge}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
             {EXTRA_SERVICES.map((extra) => (
-              <div key={extra.id} className="p-4 rounded-xl bg-[#0F1B12] border border-[#1A301E] flex flex-col justify-between gap-2">
+              <div key={extra.id} className="p-2.5 sm:p-3 rounded-lg bg-[#0F1B12] border border-[#1A301E] flex flex-col justify-between gap-1.5">
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-white">
                       {extra.name[currentLang]}
                     </span>
                   </div>
-                  <p className="text-[11px] text-[#9CA3AF] mt-1 leading-snug">
+                  <p className="text-[10px] text-[#9CA3AF] mt-0.5 leading-snug">
                     {extra.description[currentLang]}
                   </p>
                 </div>
-                <div className="pt-2 border-t border-[#172B1B] flex items-center justify-between">
-                  <span className="text-xs font-mono font-black text-[#22C55E]">
+                <div className="pt-1.5 border-t border-[#172B1B] flex items-center justify-between">
+                  <span className="text-[11px] font-mono font-black text-[#22C55E]">
                     {extra.unit[currentLang]}
                   </span>
                 </div>

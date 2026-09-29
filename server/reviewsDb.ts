@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { AutoReviewItem } from '../src/types';
 
-const REVIEWS_FILE_PATH = path.join(process.cwd(), 'server', 'data', 'user_reviews.json');
+const REVIEWS_FILE_PATH = path.join(process.cwd(), 'data', 'user_reviews.json');
 
 export class ReviewsDatabase {
   private reviews: AutoReviewItem[] = [];
@@ -45,6 +45,21 @@ export class ReviewsDatabase {
 
   public getAllReviews(): AutoReviewItem[] {
     return this.reviews;
+  }
+
+  public deleteReview(id: string): boolean {
+    const initialLen = this.reviews.length;
+    this.reviews = this.reviews.filter(r => r.id !== id);
+    if (this.reviews.length !== initialLen) {
+      this.saveReviews();
+      return true;
+    }
+    return false;
+  }
+
+  public clearAllReviews(): void {
+    this.reviews = [];
+    this.saveReviews();
   }
 
   public addReview(review: {

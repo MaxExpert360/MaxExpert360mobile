@@ -8,12 +8,13 @@ import { googleMapsService } from './server/mapsService';
 import { smsService } from './server/smsService';
 import { reviewsDb } from './server/reviewsDb';
 import { validateBookingSchedule } from './server/bookingSchedule';
+import { geminiChatService } from './server/geminiChatService';
 
 dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 8080;
+  const PORT = 3000;
 
   // Strict CORS configuration
   const ALLOWED_ORIGINS = new Set([
@@ -68,6 +69,51 @@ async function startServer() {
     });
   });
 
+  // ================= GEMINI CHATBOT API =================
+  app.get('/api/chat/status', (req, res) => {
+    res.json({
+      available: geminiChatService.isAvailable(),
+      defaultModel: 'gemini-3.5-flash',
+      supportedModels: [
+        { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', desc: 'Універсальний, збалансований та швидкий' },
+        { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', desc: 'Надшвидкі відповіді та низька затримка' },
+        { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro Preview', desc: 'Глибокий аналіз, сценарії та складні задачі' }
+      ]
+    });
+  });
+
+  app.post('/api/chat', async (req, res) => {
+    try {
+      const { messages, role, model, language } = req.body;
+      if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Повідомлення не можуть бути порожніми (messages array required).'
+        });
+      }
+
+      const result = await geminiChatService.generateChatResponse({
+        messages,
+        role: role || 'video_director',
+        model: model || 'gemini-3.5-flash',
+        language: language || 'ua'
+      });
+
+      res.json({
+        success: true,
+        reply: result.reply,
+        model: result.model,
+        role: result.role
+      });
+    } catch (err: any) {
+      console.error('[Gemini API Route Error]:', err.message);
+      res.status(500).json({
+        success: false,
+        error: err.message || 'Помилка генерації відповіді Gemini.'
+      });
+    }
+  });
+
   // Reviews API
   app.get('/api/reviews', (req, res) => {
     try {
@@ -111,6 +157,38 @@ async function startServer() {
         success: false,
         error: err.message
       });
+    }
+  });
+
+  app.delete('/api/reviews/:id', (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = reviewsDb.deleteReview(id);
+      res.json({ success: true, deleted });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/reviews/delete', (req, res) => {
+    try {
+      const { id } = req.body;
+      if (!id) {
+        return res.status(400).json({ success: false, error: 'ID is required' });
+      }
+      const deleted = reviewsDb.deleteReview(id);
+      res.json({ success: true, deleted });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/reviews/clear-all', (req, res) => {
+    try {
+      reviewsDb.clearAllReviews();
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
     }
   });
 

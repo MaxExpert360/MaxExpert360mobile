@@ -42,7 +42,7 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
       sofaTitle: '🛋️ Sofas & Divans',
       sofaSub: 'Fauteuils, causeuses, sofas 3 places et sectionnels (tissu et cuir)',
       carpetTitle: '🟫 Tapis & Moquettes',
-      carpetSub: 'Carpettes décoratives, grands tapis et escaliers complets',
+      carpetSub: 'Carpettes décoratives, grands tapis et escaliers à 5,30 $/marche',
       mattressTitle: '🛏️ Matelas & Désinfection',
       mattressSub: 'Élimination des acariens, bactéries et taches tenaces',
       ecoBadge: '100% Écologique & Sécuritaire pour enfants et animaux',
@@ -58,7 +58,7 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
       sofaTitle: '🛋️ Дивани та Крісла',
       sofaSub: 'Крісла, 2-х та 3-місні дивани, кутові та П-подібні секційні меблі',
       carpetTitle: '🟫 Килими та Сходи',
-      carpetSub: 'Килимові покриття від 0,30 $/кв.фут та сходи від 120 $',
+      carpetSub: 'Килимові покриття від 0,30 $/кв.фут та сходи по 5,30 $/сходинка',
       mattressTitle: '🛏️ Матраци та Дезінфекція',
       mattressSub: 'Глибоке очищення від пилових кліщів, алергенів та плям',
       ecoBadge: '100% Еко-засоби, безпечно для дітей та домашніх тварин',
@@ -74,7 +74,7 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
       sofaTitle: '🛋️ Sofas & Couches',
       sofaSub: 'Armchairs, loveseats, 3-seaters, L-shape and U-shape sectionals',
       carpetTitle: '🟫 Carpets & Rugs',
-      carpetSub: 'Area rugs from $0.30/sq.ft and full carpeted stairs from $120',
+      carpetSub: 'Area rugs from $0.30/sq.ft and carpeted stairs at $5.30/step',
       mattressTitle: '🛏️ Mattresses & Sanitization',
       mattressSub: 'Deep eradication of dust mites, allergens, and stubborn stains',
       ecoBadge: '100% Eco-friendly & safe for children and pets',
@@ -85,47 +85,47 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
   }[currentLang];
 
   return (
-    <section id="residential" className="py-16 sm:py-20 bg-[#0A100C] text-white relative border-b border-[#1A2A1E]">
+    <section id="residential" className="py-8 sm:py-12 bg-[#0A100C] text-white relative border-b border-[#1A2A1E]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
-          <span className="inline-block text-[11px] uppercase tracking-[0.25em] text-[#22C55E] font-mono font-bold bg-[#112417] px-3.5 py-1 rounded-full border border-[#22C55E]/40">
+        {/* Section Header - Compact */}
+        <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-8 space-y-2">
+          <span className="inline-block text-[10px] uppercase tracking-[0.25em] text-[#22C55E] font-mono font-bold bg-[#112417] px-3 py-0.5 rounded-full border border-[#22C55E]/40">
             {t.eyebrow}
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-heading font-black text-white tracking-tight uppercase">
+          <h2 className="text-2xl sm:text-3xl font-heading font-black text-white tracking-tight uppercase">
             {t.title}
           </h2>
-          <p className="text-sm text-[#9CA3AF] font-normal leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#9CA3AF] font-normal leading-relaxed">
             {t.subtitle}
           </p>
 
           {/* Slogan Banner matching flyer */}
-          <div className="inline-flex items-center gap-2 bg-[#122B19] border border-[#22C55E]/50 px-4 py-2 rounded-xl text-xs font-bold text-[#86EFAC] mt-3">
-            <Sparkles className="w-4 h-4 text-[#22C55E]" />
+          <div className="inline-flex items-center gap-1.5 bg-[#122B19] border border-[#22C55E]/50 px-3 py-1 rounded-lg text-[11px] font-bold text-[#86EFAC] mt-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-[#22C55E]" />
             <span>{t.quoteBanner}</span>
           </div>
         </div>
 
-        {/* 3 Major Residential Pillars */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 mb-12">
+        {/* 3 Major Residential Pillars - Compact */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
           
           {/* Pillar 1: Sofas & Divans */}
-          <div className="bg-[#0D1810] border border-[#1E3A24] rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-xl relative overflow-hidden">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-[#1A3320] pb-3.5">
+          <div className="bg-[#0D1810] border border-[#1E3A24] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-md relative overflow-hidden">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-[#1A3320] pb-2.5">
                 <div>
-                  <h3 className="font-heading text-xl font-black text-white uppercase">
+                  <h3 className="font-heading text-base sm:text-lg font-black text-white uppercase">
                     {t.sofaTitle}
                   </h3>
-                  <p className="text-xs text-[#9CA3AF] mt-0.5">{t.sofaSub}</p>
+                  <p className="text-[11px] text-[#9CA3AF] mt-0.5">{t.sofaSub}</p>
                 </div>
-                <span className="text-2xl">🛋️</span>
+                <span className="text-xl">🛋️</span>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-1.5">
                 {FURNITURE_SERVICES.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-2.5 rounded-lg bg-[#112115] border border-[#1C3622] text-xs">
+                  <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-[#112115] border border-[#1C3622] text-xs">
                     <span className="text-[#E5E7EB] font-medium">{item.name[currentLang]}</span>
                     <span className="font-mono font-black text-[#22C55E] bg-[#162D1D] px-2 py-0.5 rounded border border-[#22C55E]/30">
                       {item.price} $
@@ -135,7 +135,7 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
               </div>
             </div>
 
-            <div className="pt-5 mt-4 border-t border-[#1A3320]">
+            <div className="pt-3 mt-3 border-t border-[#1A3320]">
               <button
                 type="button"
                 onClick={() => {
@@ -146,70 +146,70 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
                     onOpenBooking();
                   }
                 }}
-                className="w-full py-3 rounded-xl bg-[#16A34A] hover:bg-[#22C55E] text-white font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                className="w-full py-2.5 rounded-lg bg-[#16A34A] hover:bg-[#22C55E] text-white font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <span>{t.ctaBook}</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
           {/* Pillar 2: Tapis & Moquettes */}
-          <div id="tapis-matelas" className="bg-[#0D1810] border border-[#1E3A24] rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-xl relative overflow-hidden">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-[#1A3320] pb-3.5">
+          <div id="tapis-matelas" className="bg-[#0D1810] border border-[#1E3A24] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-md relative overflow-hidden">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-[#1A3320] pb-2.5">
                 <div>
-                  <h3 className="font-heading text-xl font-black text-white uppercase">
+                  <h3 className="font-heading text-base sm:text-lg font-black text-white uppercase">
                     {t.carpetTitle}
                   </h3>
-                  <p className="text-xs text-[#9CA3AF] mt-0.5">{t.carpetSub}</p>
+                  <p className="text-[11px] text-[#9CA3AF] mt-0.5">{t.carpetSub}</p>
                 </div>
-                <span className="text-2xl">🟫</span>
+                <span className="text-xl">🟫</span>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-1.5">
                 {CARPET_SERVICES.map((item) => (
-                  <div key={item.id} className="p-3 rounded-lg bg-[#112115] border border-[#1C3622] text-xs flex flex-col justify-between gap-1">
+                  <div key={item.id} className="p-2 rounded-lg bg-[#112115] border border-[#1C3622] text-xs flex flex-col justify-between gap-0.5">
                     <div className="flex items-center justify-between">
                       <span className="text-white font-bold">{item.name[currentLang]}</span>
                       <span className="font-mono font-black text-[#22C55E] bg-[#162D1D] px-2 py-0.5 rounded border border-[#22C55E]/30">
                         {item.price ? `${item.price} $` : item.pricePerSqFt ? `${item.pricePerSqFt} $/pi²` : ''}
                       </span>
                     </div>
-                    <span className="text-[11px] text-[#9CA3AF]">{item.description[currentLang]}</span>
+                    <span className="text-[10px] text-[#9CA3AF]">{item.description[currentLang]}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="pt-5 mt-4 border-t border-[#1A3320]">
+            <div className="pt-3 mt-3 border-t border-[#1A3320]">
               <button
                 type="button"
                 onClick={onOpenCalculator}
-                className="w-full py-3 rounded-xl bg-[#142618] hover:bg-[#1B3622] text-[#86EFAC] hover:text-white border border-[#22C55E]/40 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                className="w-full py-2.5 rounded-lg bg-[#142618] hover:bg-[#1B3622] text-[#86EFAC] hover:text-white border border-[#22C55E]/40 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <span>{t.ctaEstimate}</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
           {/* Pillar 3: Matelas & Désinfection */}
-          <div className="bg-[#0D1810] border border-[#1E3A24] rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-xl relative overflow-hidden">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-[#1A3320] pb-3.5">
+          <div className="bg-[#0D1810] border border-[#1E3A24] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-md relative overflow-hidden">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-[#1A3320] pb-2.5">
                 <div>
-                  <h3 className="font-heading text-xl font-black text-white uppercase">
+                  <h3 className="font-heading text-base sm:text-lg font-black text-white uppercase">
                     {t.mattressTitle}
                   </h3>
-                  <p className="text-xs text-[#9CA3AF] mt-0.5">{t.mattressSub}</p>
+                  <p className="text-[11px] text-[#9CA3AF] mt-0.5">{t.mattressSub}</p>
                 </div>
-                <span className="text-2xl">🛏️</span>
+                <span className="text-xl">🛏️</span>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-1.5">
                 {MATTRESS_SERVICES.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-2.5 rounded-lg bg-[#112115] border border-[#1C3622] text-xs">
+                  <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-[#112115] border border-[#1C3622] text-xs">
                     <span className="text-[#E5E7EB] font-medium">{item.name[currentLang]}</span>
                     <span className="font-mono font-black text-[#22C55E] bg-[#162D1D] px-2 py-0.5 rounded border border-[#22C55E]/30">
                       {item.price} $
@@ -219,7 +219,7 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
               </div>
             </div>
 
-            <div className="pt-5 mt-4 border-t border-[#1A3320]">
+            <div className="pt-3 mt-3 border-t border-[#1A3320]">
               <button
                 type="button"
                 onClick={() => {
@@ -230,33 +230,33 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
                     onOpenBooking();
                   }
                 }}
-                className="w-full py-3 rounded-xl bg-[#16A34A] hover:bg-[#22C55E] text-white font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                className="w-full py-2.5 rounded-lg bg-[#16A34A] hover:bg-[#22C55E] text-white font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <span>{t.ctaBook}</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
         </div>
 
-        {/* 4 Feature Points Bar */}
-        <div className="bg-[#0C1610] border border-[#1E3523] rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full text-xs">
-            <div className="flex items-center gap-2 text-[#D1D5DB]">
-              <Leaf className="w-4 h-4 text-[#22C55E] shrink-0" />
+        {/* 4 Feature Points Bar - Compact */}
+        <div className="bg-[#0C1610] border border-[#1E3523] rounded-xl p-3 sm:p-4 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 w-full text-xs">
+            <div className="flex items-center gap-1.5 text-[#D1D5DB]">
+              <Leaf className="w-3.5 h-3.5 text-[#22C55E] shrink-0" />
               <span>Produits 100% Écologiques</span>
             </div>
-            <div className="flex items-center gap-2 text-[#D1D5DB]">
-              <HeartHandshake className="w-4 h-4 text-[#22C55E] shrink-0" />
+            <div className="flex items-center gap-1.5 text-[#D1D5DB]">
+              <HeartHandshake className="w-3.5 h-3.5 text-[#22C55E] shrink-0" />
               <span>Sécuritaire enfants et animaux</span>
             </div>
-            <div className="flex items-center gap-2 text-[#D1D5DB]">
-              <Droplets className="w-4 h-4 text-[#22C55E] shrink-0" />
+            <div className="flex items-center gap-1.5 text-[#D1D5DB]">
+              <Droplets className="w-3.5 h-3.5 text-[#22C55E] shrink-0" />
               <span>Extraction à l'eau chaude</span>
             </div>
-            <div className="flex items-center gap-2 text-[#D1D5DB]">
-              <Clock className="w-4 h-4 text-[#22C55E] shrink-0" />
+            <div className="flex items-center gap-1.5 text-[#D1D5DB]">
+              <Clock className="w-3.5 h-3.5 text-[#22C55E] shrink-0" />
               <span>Séchage rapide et garanti</span>
             </div>
           </div>
