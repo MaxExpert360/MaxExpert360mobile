@@ -57,6 +57,36 @@
     "squareCustomerId": "N3CTH0EVW58RFHV6WSSQV7PZ9M",
     "bookingHistory": [
       {
+        "bookingId": "jypn7totwvn1jb",
+        "date": "2026-10-12",
+        "servicesSummary": "Intérieur + Extérieur Complet",
+        "totalPrice": 179,
+        "status": "booked",
+        "createdAt": "2026-10-06T20:43:53.567Z",
+        "squareCustomerId": "QS84H4QMK6RFYAXTWXRW826YPR",
+        "photos": []
+      },
+      {
+        "bookingId": "1okjjde06oaka3",
+        "date": "2026-10-06",
+        "servicesSummary": "Intérieur + Extérieur Express",
+        "totalPrice": 120,
+        "status": "booked",
+        "createdAt": "2026-10-05T18:55:07.526Z",
+        "squareCustomerId": "QS84H4QMK6RFYAXTWXRW826YPR",
+        "photos": []
+      },
+      {
+        "bookingId": "pending_1791219058815",
+        "date": "2026-10-06",
+        "servicesSummary": "Express",
+        "totalPrice": 120,
+        "status": "booked",
+        "createdAt": "2026-10-05T16:50:58.815Z",
+        "squareCustomerId": "QS84H4QMK6RFYAXTWXRW826YPR",
+        "photos": []
+      },
+      {
         "bookingId": "i61ns325vf3tie",
         "date": "2026-09-03",
         "servicesSummary": "Service (x1) - 100 $",
@@ -107,7 +137,33 @@
     "loyaltyRewardBalance": 0,
     "unlockedRewards": [],
     "createdAt": "2026-09-03T02:19:55.187Z",
-    "updatedAt": "2026-09-03T02:59:16.422Z",
-    "lastBookingDate": "2026-09-03"
+    "updatedAt": "2026-10-06T20:43:53.567Z",
+    "lastBookingDate": "2026-10-12"
+  },
+  {
+    "id": "cust_1791317815420_hlc14",
+    "phone": "+18736574035",
+    "normalizedPhone": "+18736574035",
+    "name": "Client",
+    "squareCustomerId": "R9FYB4MHGGX9VXJBQQ3CH8PTK0",
+    "bookingHistory": [
+      {
+        "bookingId": "9nexwe1hwvfa2z",
+        "date": "2026-10-08",
+        "servicesSummary": "Intérieur + Extérieur Complet",
+        "totalPrice": 179,
+        "status": "booked",
+        "createdAt": "2026-10-06T20:16:55.420Z",
+        "squareCustomerId": "R9FYB4MHGGX9VXJBQQ3CH8PTK0",
+        "photos": []
+      }
+    ],
+    "completedBookingsCount": 0,
+    "completedBookingIds": [],
+    "loyaltyRewardBalance": 0,
+    "unlockedRewards": [],
+    "createdAt": "2026-10-06T20:16:55.420Z",
+    "updatedAt": "2026-10-06T20:16:55.420Z",
+    "lastBookingDate": "2026-10-08"
   }
 ]

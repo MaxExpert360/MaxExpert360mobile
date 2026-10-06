@@ -34,9 +34,9 @@ export const DYNASTIE_INFO = {
   facebookUrl: 'https://www.facebook.com/profile.php?id=61591249901797',
   squareBooking: {
     enabled: true,
-    bookingUrl: 'https://squareup.com/appointments/book/maxexpert360',
-    siteUrl: 'https://maxexpert360.square.site',
-    locationId: 'LOC_MAXEXPERT360_DRUMMONDVILLE',
+    bookingUrl: 'https://app.squareup.com/appointments/book/bcdye64cpl79lq/LDRK1PM7Q1DCN/start',
+    siteUrl: 'https://square.site/book/LDRK1PM7Q1DCN/max-expert360nettoyagemobile',
+    locationId: 'LDRK1PM7Q1DCN',
     merchantName: 'MaxExpert360 Mobile',
     currency: 'CAD'
   },

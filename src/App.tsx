@@ -17,10 +17,9 @@ import { FloatingAiBotLauncher } from './components/FloatingAiBotLauncher';
 import { 
   AutoCalculatorState, 
   Language, 
-  BookingCart, 
-  AutoReviewItem 
+  BookingCart 
 } from './types';
-import { createDefaultCart } from './services/squareBookings';
+import { createDefaultCart, openOfficialSquareBooking } from './services/squareBookings';
 
 export function App() {
   const [currentLang, setCurrentLang] = useState<Language>('fr');
@@ -195,17 +194,6 @@ export function App() {
         isOpen={isWriteReviewOpen}
         onClose={() => setIsWriteReviewOpen(false)}
         currentLang={currentLang}
-        onReviewSubmitted={(newRev: AutoReviewItem) => {
-          try {
-            const raw = localStorage.getItem('maxexpert_user_reviews');
-            const list: AutoReviewItem[] = raw ? JSON.parse(raw) : [];
-            const filtered = list.filter(r => r.id !== newRev.id);
-            localStorage.setItem('maxexpert_user_reviews', JSON.stringify([newRev, ...filtered]));
-          } catch (e) {
-            console.warn('Error saving to localStorage:', e);
-          }
-          window.dispatchEvent(new CustomEvent('new_review_submitted', { detail: newRev }));
-        }}
       />
 
     </div>

@@ -32,7 +32,7 @@ import {
   TRUCK_RV_SERVICES,
   DYNASTIE_INFO 
 } from '../data/dynastieData';
-import { calculateCartSummary } from '../services/squareBookings';
+import { calculateCartSummary, openOfficialSquareBooking } from '../services/squareBookings';
 import { 
   AUTO_LAUNCH_PROMO, 
   isAutoPromoActive, 
@@ -110,7 +110,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       extrasLabel: 'Options ajoutées',
       totalEstimated: 'Total estimé :',
       estimatedTime: 'Durée indicative :',
-      btnBookThis: 'Réserver cette prestation',
+      btnBookThis: 'Réserver maintenant',
       minNotice: 'Déplacement à Drummondville inclus • Sans frais cachés ni acompte',
       disclaimer: 'Paiement sans surprise après l\'inspection de votre satisfaction. Produits 100% écologiques.'
     },

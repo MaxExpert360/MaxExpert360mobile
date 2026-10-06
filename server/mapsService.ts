@@ -107,7 +107,7 @@ export class GoogleMapsService {
   }
 
   /**
-   * Search address autocomplete suggestions via Google Places Autocomplete API
+   * Search address autocomplete suggestions via Google Places API (New)
    * Restricted to Canada (country:ca) and biased near Drummondville, QC (45.8827, -72.4851)
    */
   async getAutocompleteSuggestions(input: string): Promise<AddressSuggestion[]> {
@@ -116,51 +116,68 @@ export class GoogleMapsService {
 
     const apiKey = this.apiKey;
 
-    // 1. If Google Maps API Key is provided, execute live Google Places Autocomplete query
+    // 1. If Google Maps API Key is provided, execute live Google Places API (New) Autocomplete query
     if (apiKey) {
       try {
-        console.log(`[Google Places Autocomplete] Querying API for: "${query}"`);
-        const url = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json');
-        url.searchParams.set('input', query);
-        url.searchParams.set('types', 'address');
-        url.searchParams.set('components', 'country:ca'); // Restrict strictly to Canada
-        url.searchParams.set('location', '45.8827,-72.4851'); // Drummondville center coordinates
-        url.searchParams.set('radius', '50000'); // 50km bias
-        url.searchParams.set('language', 'fr');
-        url.searchParams.set('key', apiKey);
-
-        const response = await fetch(url.toString());
+        console.log(`[Google Places Autocomplete] Querying Places API (New) for: "${query}"`);
+        const response = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'Referer': 'https://maxexpert360.ca/'
+          },
+          body: JSON.stringify({
+            input: query,
+            includedRegionCodes: ['ca'],
+            languageCode: 'fr',
+            locationBias: {
+              circle: {
+                center: { latitude: 45.8827, longitude: -72.4851 },
+                radius: 50000.0
+              }
+            }
+          })
+        });
 
         if (response.ok) {
           const data = await response.json();
-          if (data.status === 'OK' && Array.isArray(data.predictions)) {
+          if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
             const seenPlaceIds = new Set<string>();
             const results: AddressSuggestion[] = [];
 
-            for (const p of data.predictions) {
-              if (!p.place_id || seenPlaceIds.has(p.place_id)) continue;
-              seenPlaceIds.add(p.place_id);
+            for (const item of data.suggestions) {
+              const p = item.placePrediction;
+              if (!p) continue;
+              const placeId = p.placeId || (p.place ? p.place.replace('places/', '') : '');
+              if (!placeId || seenPlaceIds.has(placeId)) continue;
+              seenPlaceIds.add(placeId);
 
               results.push({
-                placeId: p.place_id,
-                description: p.description,
-                mainText: p.structured_formatting?.main_text || p.description,
-                secondaryText: p.structured_formatting?.secondary_text || 'QC, Canada'
+                placeId,
+                description: p.text?.text || '',
+                mainText: p.structuredFormat?.mainText?.text || p.text?.text || '',
+                secondaryText: p.structuredFormat?.secondaryText?.text || 'QC, Canada'
               });
             }
 
-            console.log(`[Google Places Autocomplete] Found ${results.length} results for: "${query}"`);
-            return results;
+            if (results.length > 0) {
+              console.log(`[Google Places Autocomplete] Found ${results.length} real Google Places results for: "${query}"`);
+              return results;
+            }
           } else {
-            console.warn(`[Google Places Autocomplete] Status: ${data.status} for query: "${query}"`);
+            console.warn(`[Google Places Autocomplete] No predictions returned for query: "${query}"`);
           }
+        } else {
+          const errText = await response.text().catch(() => '');
+          console.warn(`[Google Places Autocomplete] HTTP ${response.status}:`, errText);
         }
       } catch (err: any) {
         console.warn('[Google Places Autocomplete] API call failed:', err.message);
       }
     }
 
-    // 2. Verified real catalog fallback when API key is unconfigured
+    // 2. Verified real catalog fallback when API key is unconfigured or network failure
     const lowerQuery = query.toLowerCase();
     const queryDigits = query.match(/\d+/)?.[0] || '';
     const queryLetters = lowerQuery.replace(/\d+/g, '').trim();
@@ -209,27 +226,29 @@ export class GoogleMapsService {
    */
   async getPlaceDetails(placeId: string, addressFallback?: string): Promise<ParsedAddressDetails> {
     const apiKey = this.apiKey;
+    const cleanPlaceId = placeId ? placeId.replace(/^places\//, '').trim() : '';
 
-    // 1. Live Google Place Details query
-    if (apiKey && placeId && !placeId.startsWith('ChIJj83y-p37yEwR8t5v6ZqL_') && !placeId.startsWith('custom_')) {
+    // 1. Live Google Places API (New) Place Details query
+    if (apiKey && cleanPlaceId && !cleanPlaceId.startsWith('ChIJj83y-p37yEwR8t5v6ZqL_') && !cleanPlaceId.startsWith('custom_')) {
       try {
-        console.log(`[Google Place Details] Querying place_id: ${placeId}...`);
-        const url = new URL('https://maps.googleapis.com/maps/api/place/details/json');
-        url.searchParams.set('place_id', placeId);
-        url.searchParams.set('fields', 'place_id,formatted_address,address_components,geometry');
-        url.searchParams.set('language', 'fr');
-        url.searchParams.set('key', apiKey);
-
-        const response = await fetch(url.toString());
+        console.log(`[Google Place Details] Querying Places API (New) for placeId: ${cleanPlaceId}...`);
+        const url = `https://places.googleapis.com/v1/places/${encodeURIComponent(cleanPlaceId)}?fields=id,displayName,formattedAddress,addressComponents,location`;
+        const response = await fetch(url, {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'Referer': 'https://maxexpert360.ca/'
+          }
+        });
 
         if (response.ok) {
           const data = await response.json();
-          if (data.status === 'OK' && data.result) {
-            const comps = data.result.address_components || [];
-            
+          if (data && (data.formattedAddress || data.addressComponents)) {
+            const comps: any[] = data.addressComponents || [];
+
             const getComp = (type: string) => {
               const comp = comps.find((c: any) => c.types?.includes(type));
-              return comp?.long_name || comp?.short_name || '';
+              return comp?.longText || comp?.shortText || '';
             };
 
             const street_number = getComp('street_number');
@@ -239,77 +258,18 @@ export class GoogleMapsService {
             let postal_code = getComp('postal_code');
             const country = getComp('country') || 'Canada';
 
-            const lat = data.result.geometry?.location?.lat || 45.8827;
-            const lng = data.result.geometry?.location?.lng || -72.4851;
-
-            // Secondary Google Geocoder / Place lookup if postal_code was not in initial place details
-            if (!postal_code && apiKey) {
-              try {
-                console.log(`[Google Second Postal Lookup] Postal code missing in Place Details. Attempting geocoding for place_id: ${data.result.place_id || placeId}...`);
-                const geoUrl = new URL('https://maps.googleapis.com/maps/api/geocode/json');
-                geoUrl.searchParams.set('place_id', data.result.place_id || placeId);
-                geoUrl.searchParams.set('language', 'fr');
-                geoUrl.searchParams.set('key', apiKey);
-
-                const geoRes = await fetch(geoUrl.toString());
-                if (geoRes.ok) {
-                  const geoData = await geoRes.json();
-                  if (geoData.status === 'OK' && Array.isArray(geoData.results) && geoData.results.length > 0) {
-                    for (const res of geoData.results) {
-                      const c = res.address_components?.find((comp: any) => comp.types?.includes('postal_code'));
-                      if (c?.long_name || c?.short_name) {
-                        postal_code = c.long_name || c.short_name;
-                        console.log(`[Google Second Postal Lookup] Found postal_code via place_id geocoding: ${postal_code}`);
-                        break;
-                      }
-                    }
-                  }
-                }
-
-                // If still missing, attempt reverse geocoding via lat/lng
-                if (!postal_code && lat && lng) {
-                  console.log(`[Google Second Postal Lookup] Attempting reverse geocoding for coordinates: ${lat},${lng}...`);
-                  const revUrl = new URL('https://maps.googleapis.com/maps/api/geocode/json');
-                  revUrl.searchParams.set('latlng', `${lat},${lng}`);
-                  revUrl.searchParams.set('language', 'fr');
-                  revUrl.searchParams.set('key', apiKey);
-
-                  const revRes = await fetch(revUrl.toString());
-                  if (revRes.ok) {
-                    const revData = await revRes.json();
-                    if (revData.status === 'OK' && Array.isArray(revData.results)) {
-                      for (const res of revData.results) {
-                        const c = res.address_components?.find((comp: any) => comp.types?.includes('postal_code'));
-                        if (c?.long_name || c?.short_name) {
-                          postal_code = c.long_name || c.short_name;
-                          console.log(`[Google Second Postal Lookup] Found postal_code via latlng reverse geocoding: ${postal_code}`);
-                          break;
-                        }
-                      }
-                    }
-                  }
-                }
-              } catch (secErr: any) {
-                console.warn('[Google Second Postal Lookup] Failed:', secErr.message);
-              }
-            }
-
-            const formatted = data.result.formatted_address || [
-              street_number ? `${street_number} ${route}` : route,
-              locality || 'Drummondville',
-              administrative_area_level_1,
-              postal_code,
-              'Canada'
-            ].filter(Boolean).join(', ');
+            const lat = data.location?.latitude || 45.8827;
+            const lng = data.location?.longitude || -72.4851;
+            const formatted = data.formattedAddress || addressFallback || '';
 
             const normalizedPostal = postal_code ? this.formatPostalCode(postal_code) : '';
             const hasValidPostal = Boolean(normalizedPostal && this.isValidPostalCode(normalizedPostal));
 
-            console.log(`[Google Maps Selection] place_id: ${data.result.place_id || placeId}, formatted_address: "${formatted}", extracted_postal: "${normalizedPostal || 'none'}"`);
+            console.log(`[Google Places Selection] placeId: ${cleanPlaceId}, formatted_address: "${formatted}", extracted_postal: "${normalizedPostal || 'none'}"`);
 
             return {
-              placeId: data.result.place_id || placeId,
-              place_id: data.result.place_id || placeId,
+              placeId: cleanPlaceId,
+              place_id: cleanPlaceId,
               formattedAddress: formatted,
               formatted_address: formatted,
               streetNumber: street_number,
@@ -320,9 +280,84 @@ export class GoogleMapsService {
               province: administrative_area_level_1 || 'QC',
               postalCode: normalizedPostal,
               postal_code: normalizedPostal,
-              googlePostalCode: normalizedPostal,
-              confirmedPostalCode: normalizedPostal,
-              postalCodeSource: 'google',
+              googlePostalCode: normalizedPostal || undefined,
+              confirmedPostalCode: normalizedPostal || undefined,
+              postalCodeSource: hasValidPostal ? 'google' : undefined,
+              postalCodeStatus: hasValidPostal ? 'suggested' : undefined,
+              country: country || 'Canada',
+              latitude: lat,
+              longitude: lng,
+              hasValidPostalCode: hasValidPostal,
+              isVerified: true
+            };
+          }
+        } else {
+          const errText = await response.text().catch(() => '');
+          console.warn(`[Google Place Details] HTTP ${response.status}:`, errText);
+        }
+      } catch (err: any) {
+        console.warn('[Google Place Details] API call failed:', err.message);
+      }
+    }
+
+    // 2. Google Places API (New) Text Search Fallback (if placeId lookup failed or address string provided)
+    if (apiKey && addressFallback && addressFallback.trim().length > 3) {
+      try {
+        console.log(`[Google Places TextSearch] Querying address: "${addressFallback}"...`);
+        const searchRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'Referer': 'https://maxexpert360.ca/',
+            'X-Goog-FieldMask': 'places.id,places.formattedAddress,places.addressComponents,places.location'
+          },
+          body: JSON.stringify({
+            textQuery: addressFallback.trim(),
+            languageCode: 'fr'
+          })
+        });
+
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          const firstPlace = searchData.places?.[0];
+          if (firstPlace) {
+            const comps: any[] = firstPlace.addressComponents || [];
+            const getComp = (type: string) => {
+              const comp = comps.find((c: any) => c.types?.includes(type));
+              return comp?.longText || comp?.shortText || '';
+            };
+
+            const street_number = getComp('street_number');
+            const route = getComp('route');
+            const locality = getComp('locality') || getComp('postal_town') || getComp('sublocality_level_1') || getComp('administrative_area_level_2');
+            const administrative_area_level_1 = getComp('administrative_area_level_1') || 'QC';
+            const postal_code = getComp('postal_code');
+            const country = getComp('country') || 'Canada';
+
+            const lat = firstPlace.location?.latitude || 45.8827;
+            const lng = firstPlace.location?.longitude || -72.4851;
+            const formatted = firstPlace.formattedAddress || addressFallback;
+
+            const normalizedPostal = postal_code ? this.formatPostalCode(postal_code) : '';
+            const hasValidPostal = Boolean(normalizedPostal && this.isValidPostalCode(normalizedPostal));
+
+            return {
+              placeId: firstPlace.id || cleanPlaceId || 'custom_address',
+              place_id: firstPlace.id || cleanPlaceId || 'custom_address',
+              formattedAddress: formatted,
+              formatted_address: formatted,
+              streetNumber: street_number,
+              street_number: street_number,
+              streetName: route,
+              route,
+              city: locality || 'Drummondville',
+              province: administrative_area_level_1 || 'QC',
+              postalCode: normalizedPostal,
+              postal_code: normalizedPostal,
+              googlePostalCode: normalizedPostal || undefined,
+              confirmedPostalCode: normalizedPostal || undefined,
+              postalCodeSource: hasValidPostal ? 'google' : undefined,
               postalCodeStatus: hasValidPostal ? 'suggested' : undefined,
               country: country || 'Canada',
               latitude: lat,
@@ -333,69 +368,7 @@ export class GoogleMapsService {
           }
         }
       } catch (err: any) {
-        console.warn('[Google Place Details] API call failed:', err.message);
-      }
-    }
-
-    // 2. Geocoding by Address Fallback (if apiKey exists and address string provided)
-    if (apiKey && addressFallback && addressFallback.trim().length > 3) {
-      try {
-        console.log(`[Google Geocoding] Querying address: "${addressFallback}"...`);
-        const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
-        url.searchParams.set('address', addressFallback.trim());
-        url.searchParams.set('components', 'country:ca');
-        url.searchParams.set('language', 'fr');
-        url.searchParams.set('key', apiKey);
-
-        const response = await fetch(url.toString());
-        if (response.ok) {
-          const data = await response.json();
-          if (data.status === 'OK' && Array.isArray(data.results) && data.results.length > 0) {
-            const first = data.results[0];
-            const comps = first.address_components || [];
-            const getComp = (type: string) => {
-              const comp = comps.find((c: any) => c.types?.includes(type));
-              return comp?.long_name || comp?.short_name || '';
-            };
-
-            const street_number = getComp('street_number');
-            const route = getComp('route');
-            const locality = getComp('locality') || getComp('postal_town') || getComp('sublocality_level_1') || getComp('administrative_area_level_2');
-            const administrative_area_level_1 = getComp('administrative_area_level_1') || 'QC';
-            const postal_code = getComp('postal_code');
-            const country = getComp('country') || 'Canada';
-            const lat = first.geometry?.location?.lat || 45.8827;
-            const lng = first.geometry?.location?.lng || -72.4851;
-            const formatted = first.formatted_address || addressFallback;
-
-            const normalizedPostal = postal_code ? this.formatPostalCode(postal_code) : '';
-            return {
-              placeId: first.place_id || 'custom_address',
-              place_id: first.place_id || 'custom_address',
-              formattedAddress: formatted,
-              formatted_address: formatted,
-              streetNumber: street_number,
-              street_number: street_number,
-              streetName: route,
-              route,
-              city: locality || 'Drummondville',
-              province: administrative_area_level_1 || 'QC',
-              postalCode: normalizedPostal,
-              postal_code: normalizedPostal,
-              googlePostalCode: normalizedPostal,
-              confirmedPostalCode: normalizedPostal,
-              postalCodeSource: 'google',
-              postalCodeStatus: this.isValidPostalCode(normalizedPostal) ? 'suggested' : undefined,
-              country: country || 'Canada',
-              latitude: lat,
-              longitude: lng,
-              hasValidPostalCode: Boolean(normalizedPostal && this.isValidPostalCode(normalizedPostal)),
-              isVerified: true
-            };
-          }
-        }
-      } catch (err: any) {
-        console.warn('[Google Geocoding for fallback address] failed:', err.message);
+        console.warn('[Google Places TextSearch fallback] failed:', err.message);
       }
     }
 

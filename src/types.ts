@@ -124,24 +124,39 @@ export interface BeforeAfterAutoItem {
   timeSpent: string;
 }
 
+export type ReviewStatus = 'pending' | 'approved' | 'rejected';
+
+export interface CustomerReview {
+  id: string;
+  name: string;
+  rating: number; // 1 to 5
+  comment: string;
+  service?: string;
+  createdAt: string;
+  status: ReviewStatus;
+}
+
 export interface AutoReviewItem {
   id: string;
   name: string;
-  location: string;
-  vehicle: string;
+  location?: string;
+  vehicle?: string;
   rating: number;
-  date: string;
-  service: {
+  date?: string;
+  service?: {
     fr: string;
     ua: string;
     en: string;
-  };
-  text: {
+  } | string;
+  text?: {
     fr: string;
     ua: string;
     en: string;
-  };
-  verified: boolean;
+  } | string;
+  comment?: string;
+  createdAt?: string;
+  status?: ReviewStatus;
+  verified?: boolean;
   photos?: string[];
   source?: string;
 }

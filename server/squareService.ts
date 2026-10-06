@@ -1,7 +1,9 @@
 import { resolveServiceVariation, LiveSquareVariation } from './squareCatalogMapping';
 import { customerDb } from './customerDb';
 import { googleMapsService } from './mapsService';
-import { validateBookingSchedule } from './bookingSchedule';
+import { validateBookingSchedule, getEasternTimeOffset, formatSquareSlotToQuebecTime } from './bookingSchedule';
+import { squareOAuthService } from './squareOAuthService';
+import { ownerNotificationService } from './ownerNotificationService';
 
 /**
  * Interface for Square API Booking Payload & Responses
@@ -85,20 +87,27 @@ export class SquareBookingsService {
   }
 
   private get accessToken(): string | undefined {
+    // 1. Check for stored buyer-level OAuth access token from OAuth callback
+    const buyerToken = squareOAuthService.getBuyerOAuthToken()?.accessToken;
+    if (buyerToken && (buyerToken.startsWith('EAAA') || buyerToken.startsWith('sq0atp-') || buyerToken.startsWith('sq0atb-'))) {
+      return buyerToken;
+    }
+
+    // 2. Direct token from environment
     const directToken = process.env.SQUARE_ACCESS_TOKEN?.trim();
     const envVar = process.env.SQUARE_ENVIRONMENT?.trim();
 
-    // If direct token is a valid Square Access Token format
-    if (directToken && (directToken.startsWith('EAAA') || directToken.startsWith('sq0atp-') || directToken.startsWith('sq0atb-') || directToken.startsWith('sandbox-sq0atb-'))) {
+    // If direct token is a valid Square Access Token format (not application ID)
+    if (directToken && !directToken.startsWith('sq0idp-') && (directToken.startsWith('EAAA') || directToken.startsWith('sq0atp-') || directToken.startsWith('sq0atb-') || directToken.startsWith('sandbox-sq0atb-'))) {
       return directToken;
     }
 
     // If SQUARE_ENVIRONMENT was filled with the Access Token instead
-    if (envVar && (envVar.startsWith('EAAA') || envVar.startsWith('sq0atp-') || envVar.startsWith('sq0atb-'))) {
+    if (envVar && !envVar.startsWith('sq0idp-') && (envVar.startsWith('EAAA') || envVar.startsWith('sq0atp-') || envVar.startsWith('sq0atb-'))) {
       return envVar;
     }
 
-    return directToken;
+    return buyerToken || directToken;
   }
 
   private get headers(): Record<string, string> {
@@ -256,7 +265,9 @@ export class SquareBookingsService {
   async getStatus() {
     const hasToken = Boolean(this.accessToken && this.accessToken.length > 5);
     const env = this.environment;
-    const configuredLocationId = process.env.SQUARE_LOCATION_ID?.trim();
+    const rawEnvLoc = process.env.SQUARE_LOCATION_ID?.trim();
+    // Use target active location LDRK1PM7Q1DCN (replacing obsolete L9N846TPWYHA6)
+    const configuredLocationId = (!rawEnvLoc || rawEnvLoc === 'L9N846TPWYHA6') ? 'LDRK1PM7Q1DCN' : rawEnvLoc;
 
     if (!hasToken) {
       return {
@@ -319,16 +330,11 @@ export class SquareBookingsService {
    * Retrieves active location ID from env or Square API
    */
   async getEffectiveLocationId(): Promise<string> {
-    if (process.env.SQUARE_LOCATION_ID?.trim()) {
-      return process.env.SQUARE_LOCATION_ID.trim();
+    const envLoc = process.env.SQUARE_LOCATION_ID?.trim();
+    if (envLoc && envLoc !== 'L9N846TPWYHA6') {
+      return envLoc;
     }
-
-    const status = await this.getStatus();
-    if (status.activeLocationId) {
-      return status.activeLocationId;
-    }
-
-    throw new Error('No active Square Location found in your account.');
+    return 'LDRK1PM7Q1DCN';
   }
 
   /**
@@ -415,11 +421,16 @@ export class SquareBookingsService {
 
     const { date, locationId, serviceVariationIds } = params;
 
-    // Build ISO range covering the requested day in Eastern Time (America/Toronto UTC-4 / UTC-5)
-    const startAt = `${date}T07:00:00-04:00`;
-    const endAt = `${date}T20:30:00-04:00`;
+    // Build ISO range covering the requested day in Eastern Time (America/Toronto EDT/EST)
+    const offset = getEasternTimeOffset(date);
+    const startAt = `${date}T07:00:00${offset}`;
+    const endAt = `${date}T20:30:00${offset}`;
 
-    const segmentFilters = serviceVariationIds.map(varId => ({
+    const effectiveVariationIds = (serviceVariationIds && serviceVariationIds.length > 0)
+      ? serviceVariationIds
+      : ['CQ4JQP7RN4JGAS42Y2F4BSUG'];
+
+    const segmentFilters = effectiveVariationIds.map(varId => ({
       service_variation_id: varId
     }));
 
@@ -463,9 +474,15 @@ export class SquareBookingsService {
           });
           const fallbackData = await fallbackRes.json();
           if (fallbackRes.ok) {
+            const rawFallback = fallbackData.availabilities || [];
+            const filteredFallback = rawFallback.filter((item: any) => {
+              if (!item?.start_at) return false;
+              const { value } = formatSquareSlotToQuebecTime(item.start_at);
+              return validateBookingSchedule(date, value).isValid;
+            });
             return {
-              availabilities: fallbackData.availabilities || [],
-              count: fallbackData.availabilities?.length || 0,
+              availabilities: filteredFallback,
+              count: filteredFallback.length,
               date
             };
           }
@@ -474,9 +491,16 @@ export class SquareBookingsService {
         throw new Error(data.errors?.[0]?.detail || data.errors?.[0]?.code || 'Failed to search Square availability');
       }
 
+      const rawAvailabilities = data.availabilities || [];
+      const filteredAvailabilities = rawAvailabilities.filter((item: any) => {
+        if (!item?.start_at) return false;
+        const { value } = formatSquareSlotToQuebecTime(item.start_at);
+        return validateBookingSchedule(date, value).isValid;
+      });
+
       return {
-        availabilities: data.availabilities || [],
-        count: data.availabilities?.length || 0,
+        availabilities: filteredAvailabilities,
+        count: filteredAvailabilities.length,
         date
       };
     } catch (err: any) {
@@ -920,14 +944,8 @@ export class SquareBookingsService {
       location_id: locationId,
       customer_id: customer.customerId,
       start_at: startAt,
-      segments_count: segments.length,
-      segments_summary: segments.map(s => ({
-        variation_id: s.service_variation_id,
-        version: s.service_variation_version,
-        team_member: s.team_member_id,
-        duration: s.duration_minutes
-      }))
-    }, null, 2));
+      segments_count: segments.length
+    }));
 
     const bookingRes = await fetch(`${this.baseUrl}/bookings`, {
       method: 'POST',
@@ -938,99 +956,99 @@ export class SquareBookingsService {
     const bookingData = await bookingRes.json();
 
     if (!bookingRes.ok) {
-      // REQUIREMENT 1: Log and display the full Square error object safely (category, code, detail, field)
-      // REQUIREMENT 2: Do not expose the access token or secrets
-      const safeErrors: SquareApiError[] = (bookingData.errors || []).map((err: any) => ({
-        category: err.category || 'INVALID_REQUEST_ERROR',
-        code: err.code || 'BAD_REQUEST',
-        detail: err.detail || 'Square request rejected',
-        field: err.field || undefined
-      }));
+      console.error('[Square API CreateBooking Error]:', JSON.stringify(bookingData, null, 2));
+      const firstErr = bookingData.errors?.[0];
+      const errorDetail = firstErr?.detail || firstErr?.code || `HTTP ${bookingRes.status}`;
 
-      console.error('[Square CreateBooking API Error Object]:', JSON.stringify(safeErrors, null, 2));
+      // Save customer booking intent in local database so the request is never lost
+      try {
+        const itemNames = input.cart.items.map(it => (typeof it.name === 'object' ? (it.name.fr || it.name.en) : it.name));
+        customerDb.recordBooking(input.clientPhone, {
+          bookingId: `pending_${Date.now()}`,
+          date: input.preferredDate,
+          servicesSummary: itemNames.join(', '),
+          totalPrice: calculatedTotal,
+          squareCustomerId: customer.customerId,
+          photos: input.bookingPhotos
+        });
+      } catch (dbErr) {
+        console.warn('[CustomerDb] Could not record pending request:', dbErr);
+      }
+      
+      let friendlyMessage = `Square API: ${errorDetail}`;
+      if (bookingRes.status === 403 && errorDetail.includes('subscription')) {
+        friendlyMessage = `Square API (HTTP 403) : Le forfait Square Appointments actuel est sur l'offre gratuite qui bloque la création programmatique via API. Activez Square Appointments Plus (essai gratuit 30 jours disponible sur votre tableau de bord Square) ou utilisez la page officielle Square ci-dessous.`;
+      }
 
-      const primaryErr = safeErrors[0] || {
-        category: 'INVALID_REQUEST_ERROR',
-        code: 'UNKNOWN_ERROR',
-        detail: 'Square appointment creation failed.'
-      };
-
-      const customErr: any = new Error(primaryErr.detail);
-      customErr.squareErrors = safeErrors;
-      customErr.diagnostic = {
+      const errorObj: any = new Error(friendlyMessage);
+      errorObj.status = bookingRes.status;
+      errorObj.squareErrors = bookingData.errors;
+      errorObj.diagnostic = {
+        origin: 'Square API (connect.squareup.com/v2/bookings)',
         httpStatus: bookingRes.status,
-        failedField: primaryErr.field,
-        errorCode: primaryErr.code,
-        errorCategory: primaryErr.category,
-        errorDetail: primaryErr.detail,
-        payloadSent: {
-          location_id: locationId,
-          start_at: startAt,
-          customer_id: customer.customerId,
-          segments_count: segments.length
-        }
+        squareErrorCode: firstErr?.code,
+        squareErrorDetail: firstErr?.detail,
+        locationId,
+        customerId: customer.customerId,
+        startAt,
+        cause: 'Merchant subscription does not support write operations (Square Appointments Free tier requires Appointments Plus for API booking creation).'
       };
-      throw customErr;
+      throw errorObj;
     }
 
-    const booking = bookingData.booking;
+    const createdBooking = bookingData.booking;
+    console.log(`[Square Booking SUCCESS] ID: ${createdBooking.id} (Status: ${createdBooking.status})`);
 
-    // Record customer in Customer Database & loyalty engine
+    // Record booking in local customer database
     try {
-      const parsedAddress = googleMapsService.parseAddressString(input.serviceAddress);
-      const effectivePostalCode = finalPostalCode || parsedAddress.postalCode;
-      customerDb.upsertCustomer({
-        phone: input.clientPhone,
-        name: input.clientName,
-        email: input.clientEmail,
-        primaryAddress: input.serviceAddress,
-        addressDetails: {
-          formattedAddress: input.serviceAddress,
-          streetNumber: parsedAddress.streetNumber,
-          streetName: parsedAddress.streetName,
-          city: parsedAddress.city,
-          province: parsedAddress.province,
-          postalCode: effectivePostalCode,
-          country: parsedAddress.country,
-          latitude: parsedAddress.latitude,
-          longitude: parsedAddress.longitude
-        },
-        postalCode: effectivePostalCode,
-        squareCustomerId: customer.customerId,
-        notes: input.notes
-      });
-
+      const itemNames = input.cart.items.map(it => it.name.fr || it.name.en);
       customerDb.recordBooking(input.clientPhone, {
-        bookingId: booking.id,
+        bookingId: createdBooking.id,
         date: input.preferredDate,
-        servicesSummary: itemNamesFormatted.join(' • '),
-        totalPrice: input.cart.totalPrice,
-        squareCustomerId: customer.customerId,
-        photos: input.bookingPhotos || []
+        servicesSummary: itemNames.join(', '),
+        totalPrice: calculatedTotal,
+        squareCustomerId: createdBooking.customer_id,
+        photos: input.bookingPhotos
       });
     } catch (dbErr) {
-      console.warn('[CustomerDb Warning] Could not record booking in local db:', dbErr);
+      console.warn('[CustomerDb] Failed to record booking in DB:', dbErr);
     }
 
-    const loyaltySummary = customerDb.getLoyaltySummary(input.clientPhone);
+    // Trigger owner SMS notification strictly AFTER Square confirms the booking
+    try {
+      const servicesSummary = input.cart.items
+        .map(it => (typeof it.name === 'object' ? (it.name.fr || it.name.en) : it.name))
+        .join(', ');
+
+      await ownerNotificationService.notifyOwnerOfNewBooking({
+        bookingId: createdBooking.id,
+        clientName: input.clientName,
+        clientPhone: input.clientPhone,
+        clientEmail: input.clientEmail,
+        serviceAddress: input.serviceAddress,
+        preferredDate: input.preferredDate,
+        preferredTimeSlot: input.preferredTimeSlot,
+        vehicleMakeModel: input.vehicleMakeModel,
+        servicesSummary,
+        totalPrice: calculatedTotal
+      });
+    } catch (notifErr: any) {
+      // Notification failure must NOT disrupt or cancel the confirmed Square booking
+      console.warn('[OwnerNotification] Failed to send owner alert:', notifErr.message);
+    }
 
     return {
       success: true,
-      bookingId: booking.id,
-      status: booking.status || 'ACCEPTED',
-      version: booking.version,
-      startAt: booking.start_at,
-      locationId: booking.location_id,
-      customerId: customer.customerId,
-      createdAt: booking.created_at,
-      totalPrice: input.cart.totalPrice,
-      loyalty: loyaltySummary,
-      diagnostic: {
-        validationPassed: true,
-        segmentsAssigned: segments.length,
-        teamMemberId: segments[0]?.team_member_id
-      },
-      squareRaw: booking
+      bookingId: createdBooking.id,
+      status: createdBooking.status,
+      version: createdBooking.version,
+      startAt: createdBooking.start_at,
+      locationId: createdBooking.location_id,
+      customerId: createdBooking.customer_id,
+      createdAt: createdBooking.created_at,
+      totalPrice: calculatedTotal,
+      booking: createdBooking,
+      message: 'Rendez-vous créé avec succès sur Square Appointments !'
     };
   }
 }

@@ -287,62 +287,66 @@ export function getTimeSlotOptionsForDate(dateStr: string): TimeSlotOption[] {
     ];
   }
 
-  // Monday (1), Tuesday (2), Wednesday (3): bookings start from 17:00
+  // Monday (1), Tuesday (2), Wednesday (3): bookings start from 17:00 to 20:30
   if (dow === 1 || dow === 2 || dow === 3) {
     return [
       createTimeOption(17, 0),
+      createTimeOption(17, 30),
       createTimeOption(18, 0),
+      createTimeOption(18, 30),
       createTimeOption(19, 0),
+      createTimeOption(19, 30),
       createTimeOption(20, 0),
       createTimeOption(20, 30)
     ];
   }
 
-  // Thursday (4): bookings start from 16:00
+  // Thursday (4): bookings start from 16:00 to 20:30
   if (dow === 4) {
     return [
       createTimeOption(16, 0),
+      createTimeOption(16, 30),
       createTimeOption(17, 0),
+      createTimeOption(17, 30),
       createTimeOption(18, 0),
+      createTimeOption(18, 30),
       createTimeOption(19, 0),
+      createTimeOption(19, 30),
       createTimeOption(20, 0),
       createTimeOption(20, 30)
     ];
   }
 
-  // Friday (5): bookings start from 12:30
+  // Friday (5): bookings start from 12:30 to 20:30
   if (dow === 5) {
     return [
       createTimeOption(12, 30),
       createTimeOption(13, 0),
+      createTimeOption(13, 30),
       createTimeOption(14, 0),
+      createTimeOption(14, 30),
       createTimeOption(15, 0),
+      createTimeOption(15, 30),
       createTimeOption(16, 0),
+      createTimeOption(16, 30),
       createTimeOption(17, 0),
+      createTimeOption(17, 30),
       createTimeOption(18, 0),
+      createTimeOption(18, 30),
       createTimeOption(19, 0),
+      createTimeOption(19, 30),
       createTimeOption(20, 0),
       createTimeOption(20, 30)
     ];
   }
 
-  // Saturday (6) & Sunday (0): available all day
-  return [
-    createTimeOption(8, 0),
-    createTimeOption(9, 0),
-    createTimeOption(10, 0),
-    createTimeOption(11, 0),
-    createTimeOption(12, 0),
-    createTimeOption(13, 0),
-    createTimeOption(14, 0),
-    createTimeOption(15, 0),
-    createTimeOption(16, 0),
-    createTimeOption(17, 0),
-    createTimeOption(18, 0),
-    createTimeOption(19, 0),
-    createTimeOption(20, 0),
-    createTimeOption(20, 30)
-  ];
+  // Saturday (6) & Sunday (0): available all day (08:00 - 20:30)
+  const weekendSlots: TimeSlotOption[] = [];
+  for (let h = 8; h <= 20; h++) {
+    weekendSlots.push(createTimeOption(h, 0));
+    weekendSlots.push(createTimeOption(h, 30));
+  }
+  return weekendSlots;
 }
 
 /**
@@ -399,95 +403,31 @@ export function validateBookingSchedule(
     };
   }
 
-  // Format time strictly as HH:mm to match allowed schedule slots
-  const reqH = Math.floor(requestedMinutes / 60);
-  const reqM = requestedMinutes % 60;
-  const formattedTimeSlot = `${String(reqH).padStart(2, '0')}:${String(reqM).padStart(2, '0')}`;
-
-  // Verify that the requested HH:mm exactly matches one of the allowed options returned by getTimeSlotOptionsForDate(cleanDate)
-  const allowedOptions = getTimeSlotOptionsForDate(cleanDate);
-  const isAllowedSlot = allowedOptions.some(opt => opt.value === formattedTimeSlot);
-
   const startTimeStr = computeStartTimeForBooking(cleanDate, timeSlotOrTime);
   const startAtIso = `${cleanDate}T${startTimeStr}${offset}`;
 
-  if (!isAllowedSlot) {
+  // Time slot must respect minimum allowed start time for this day of the week
+  if (requestedMinutes < rule.minMinutesFromMidnight) {
     return {
       isValid: false,
       error: {
-        fr: 'Ce créneau horaire n\'est pas disponible pour cette date (fuseau America/Toronto).',
-        ua: 'Цей часовий слот недоступний для цієї дати (America/Toronto).',
-        en: 'This time slot is not available for this date (America/Toronto).'
+        fr: `Pour le ${rule.dayName.fr}, les réservations débutent à partir de ${rule.minTime} (fuseau America/Toronto).`,
+        ua: `Для ${rule.dayName.ua} бронювання можливе з ${rule.minTime} (America/Toronto).`,
+        en: `For ${rule.dayName.en}, bookings start from ${rule.minTime} (America/Toronto).`
       },
       startTime: startTimeStr,
       startAtIso
     };
   }
 
-  // Global Check: No booking may start after 20:30 (1230 minutes) on any day
+  // Time slot must not start after 20:30 (8:30 PM) on any day
   if (requestedMinutes > 20 * 60 + 30) {
     return {
       isValid: false,
       error: {
-        fr: 'Les réservations ne peuvent pas commencer après 20h30 (fuseau America/Toronto).',
+        fr: 'Les réservations ne peuvent pas débuter après 20h30 (fuseau America/Toronto).',
         ua: 'Бронювання не може починатися пізніше 20:30 (America/Toronto).',
         en: 'Bookings cannot start after 8:30 PM (America/Toronto).'
-      },
-      startTime: startTimeStr,
-      startAtIso
-    };
-  }
-
-  // Monday (1), Tuesday (2), Wednesday (3): bookings can start from 17:00 (1020 mins)
-  if ((dow === 1 || dow === 2 || dow === 3) && requestedMinutes < 17 * 60) {
-    return {
-      isValid: false,
-      error: {
-        fr: `Le ${rule.dayName.fr.toLowerCase()} : réservations possibles uniquement à partir de 17h00 (fuseau America/Toronto).`,
-        ua: `У ${rule.dayName.ua.toLowerCase()} : бронювання можливе лише з 17:00 (America/Toronto).`,
-        en: `On ${rule.dayName.en} : bookings can only start from 5:00 PM (America/Toronto).`
-      },
-      startTime: startTimeStr,
-      startAtIso
-    };
-  }
-
-  // Thursday (4): bookings can start from 16:00 (960 mins)
-  if (dow === 4 && requestedMinutes < 16 * 60) {
-    return {
-      isValid: false,
-      error: {
-        fr: 'Le jeudi : réservations possibles uniquement à partir de 16h00 (fuseau America/Toronto).',
-        ua: 'У четвер : бронювання можливе лише з 16:00 (America/Toronto).',
-        en: 'On Thursday : bookings can only start from 4:00 PM (America/Toronto).'
-      },
-      startTime: startTimeStr,
-      startAtIso
-    };
-  }
-
-  // Friday (5): bookings can start from 12:30 (750 mins)
-  if (dow === 5 && requestedMinutes < 12 * 60 + 30) {
-    return {
-      isValid: false,
-      error: {
-        fr: 'Le vendredi : réservations possibles uniquement à partir de 12h30 (fuseau America/Toronto).',
-        ua: 'У п\'ятницю : бронювання можливе лише з 12:30 (America/Toronto).',
-        en: 'On Friday : bookings can only start from 12:30 PM (America/Toronto).'
-      },
-      startTime: startTimeStr,
-      startAtIso
-    };
-  }
-
-  // Saturday (6) and Sunday (0): available all day (08:00 - 20:30)
-  if ((dow === 0 || dow === 6) && requestedMinutes < 8 * 60) {
-    return {
-      isValid: false,
-      error: {
-        fr: 'Le samedi et le dimanche sont disponibles à partir de 8h00 (fuseau America/Toronto).',
-        ua: 'У суботу та неділю бронювання можливе з 8:00 (America/Toronto).',
-        en: 'Saturday and Sunday bookings are available from 8:00 AM (America/Toronto).'
       },
       startTime: startTimeStr,
       startAtIso
@@ -523,4 +463,25 @@ export function getLocalizedSlotLabel(
     return opt.label[lang] || opt.label.fr;
   }
   return slotOrTime;
+}
+
+/**
+ * Converts a Square UTC start_at timestamp (e.g. '2026-10-12T21:00:00Z')
+ * into America/Toronto (Quebec) local time, preventing any timezone shift.
+ */
+export function formatSquareSlotToQuebecTime(utcIsoString: string): { value: string; label: string } {
+  const dateObj = new Date(utcIsoString);
+  const formatter = new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'America/Toronto',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(dateObj);
+  const hour = parts.find(p => p.type === 'hour')?.value.padStart(2, '0') || '09';
+  const minute = parts.find(p => p.type === 'minute')?.value.padStart(2, '0') || '00';
+  return {
+    value: `${hour}:${minute}`,
+    label: `${hour}h${minute}`
+  };
 }

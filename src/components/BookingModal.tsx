@@ -47,8 +47,12 @@ import {
   getLocalizedSlotLabel
 } from '../config/bookingSchedule';
 import {
+  openOfficialSquareBooking,
   submitRealSquareBooking,
   checkSquareServerStatus,
+  checkSquareAvailability,
+  extractQuebecSlotsFromSquareAvailability,
+  FormattedSquareSlot,
   generateOrderSummaryText,
   copySummaryToClipboard,
   buildSquareBookingUrl,
@@ -65,6 +69,8 @@ import {
   normalizeCanadianPostalCode,
   AddressSuggestionItem
 } from '../services/squareBookings';
+import { ensureGoogleMapsLoaded } from '../services/googleMapsLoader';
+import { VisualDatePicker } from './VisualDatePicker';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -178,6 +184,63 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     notes: ''
   });
 
+  // Real Square Availability State
+  const [squareAvailableSlots, setSquareAvailableSlots] = useState<FormattedSquareSlot[]>([]);
+  const [isLoadingSquareAvailability, setIsLoadingSquareAvailability] = useState(false);
+  const [squareAvailabilityChecked, setSquareAvailabilityChecked] = useState(false);
+  const [squareAvailabilityNotice, setSquareAvailabilityNotice] = useState<string | null>(null);
+
+  const handleDateSelect = async (newDate: string) => {
+    setFormData(prev => ({
+      ...prev,
+      preferredDate: newDate,
+      preferredTimeSlot: ''
+    }));
+
+    if (validationError?.field === 'preferredDate' || validationError?.field === 'preferredTimeSlot') {
+      setValidationError(null);
+    }
+
+    if (!newDate) {
+      setSquareAvailableSlots([]);
+      setSquareAvailabilityChecked(false);
+      setSquareAvailabilityNotice(null);
+      return;
+    }
+
+    setIsLoadingSquareAvailability(true);
+    setSquareAvailabilityNotice(null);
+
+    try {
+      const res = await checkSquareAvailability(newDate);
+      if (res && res.success && Array.isArray(res.availabilities)) {
+        const slots = extractQuebecSlotsFromSquareAvailability(res.availabilities, newDate);
+        setSquareAvailableSlots(slots);
+        setSquareAvailabilityChecked(true);
+
+        if (slots.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            preferredTimeSlot: slots[0].value
+          }));
+        } else {
+          setFormData(prev => ({ ...prev, preferredTimeSlot: '' }));
+          setSquareAvailabilityNotice('Aucun créneau disponible pour cette date.');
+        }
+      } else {
+        setSquareAvailableSlots([]);
+        setSquareAvailabilityChecked(true);
+        setSquareAvailabilityNotice(res?.error || 'Aucune disponibilité retournée par Square.');
+      }
+    } catch {
+      setSquareAvailableSlots([]);
+      setSquareAvailabilityChecked(true);
+      setSquareAvailabilityNotice('Erreur lors de la vérification de la disponibilité.');
+    } finally {
+      setIsLoadingSquareAvailability(false);
+    }
+  };
+
   // Maintain countdown timer linked to persistent session cooldown timestamp
   useEffect(() => {
     const cleanDigits = phoneInput.replace(/\D/g, '');
@@ -192,12 +255,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     return () => clearInterval(interval);
   }, [phoneInput, smsSentNotice]);
 
-  // Check Square backend status on mount
+  // Check Square backend status and preload Google Maps on mount
   useEffect(() => {
     if (isOpen) {
       checkSquareServerStatus()
         .then(status => setSquareStatus(status))
         .catch(() => setSquareStatus({ configured: false, environment: 'unknown' }));
+      ensureGoogleMapsLoaded().catch(() => {});
     }
   }, [isOpen]);
 
@@ -856,41 +920,32 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       setStep(4);
     } else if (step === 4) {
-      // Final confirmation & submission
+      // Final confirmation & submission directly to Square Bookings API
       setIsSubmitting(true);
       setSubmissionError(null);
 
       try {
-        const rawPostal = postalCodeInput.trim() || formData.confirmedPostalCode || formData.postalCode || '';
-        const normalizedPostal = normalizeCanadianPostalCode(rawPostal);
-
-        const finalSubmissionData: AutoBookingFormData = {
+        const rawPostal = postalCodeInput.trim() || formData.confirmedPostalCode || formData.postalCode || formData.googlePostalCode || '';
+        const finalSubmissionData = {
           ...formData,
-          clientName: clientName.trim() || formData.clientName,
-          clientEmail: clientEmail.trim() || formData.clientEmail,
-          clientPhone: phoneInput.trim() || formData.clientPhone,
-          serviceAddress: addressInput.trim() || formData.serviceAddress,
-          postalCode: normalizedPostal,
-          confirmedPostalCode: normalizedPostal,
-          totalPrice: finalAdjustedTotal,
-          selectedRewardId: selectedLoyaltyReward?.id,
-          rewardDiscount: loyaltyCreditDiscount,
-          bookingPhotos
+          postalCode: rawPostal,
+          confirmedPostalCode: rawPostal,
+          postalCodeSource: formData.postalCodeSource || 'manual'
         };
 
         const result = await submitRealSquareBooking(cart, finalSubmissionData, currentLang);
 
         if (result.success && result.bookingId) {
           setBookingResult(result);
-          setStep(5);
+          setIsSubmitting(false);
+          setStep(5); // Success confirmation step
         } else {
-          setSubmissionError(result.error || 'Erreur inattendue de Square API.');
+          setIsSubmitting(false);
+          setSubmissionError(result.error || 'Erreur lors de la réservation sur Square.');
         }
       } catch (err: any) {
-        console.error('Square Booking creation error:', err);
-        setSubmissionError(err.message || 'Impossible de créer le rendez-vous dans Square.');
-      } finally {
         setIsSubmitting(false);
+        setSubmissionError(err.message || 'Erreur de connexion avec le serveur.');
       }
     }
   };
@@ -906,8 +961,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   };
 
   const handleOpenSquareFallback = () => {
-    const squareUrl = buildSquareBookingUrl(cart, formData, currentLang);
-    window.open(squareUrl, '_blank', 'noopener,noreferrer');
+    openOfficialSquareBooking();
   };
 
   const handleSendSms = () => {
@@ -1069,7 +1123,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       localTravelNote: 'Travel included in Drummondville • No deposit required',
       btnNext: 'Next',
       btnBack: 'Back',
-      btnConfirmSquare: 'Create Booking in Square',
+      btnConfirmSquare: 'Create Booking on Square',
       btnProcessing: 'Creating Square Appointment...',
       btnCopySummary: 'Copy Order Summary',
       btnSmsMax: 'Send via SMS to Max',
@@ -1469,10 +1523,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
 
               {/* Google Maps Address Autocomplete Field */}
-              <div className="relative" id="booking-field-address-container">
-                <label className="block text-xs font-mono font-bold text-[#D1D5DB] mb-1.5 uppercase">
-                  {t.addressLabel}
-                </label>
+              <div className="relative z-30" id="booking-field-address-container">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-mono font-bold text-[#D1D5DB] uppercase">
+                    {t.addressLabel}
+                  </label>
+                  {isAddressConfirmed && formData.addressValidated && (
+                    <span className="text-[10px] font-mono text-[#86EFAC] bg-[#14301B] px-2 py-0.5 rounded border border-[#22C55E]/40 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-[#22C55E]" />
+                      <span>Adresse validée Google Places</span>
+                    </span>
+                  )}
+                </div>
 
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#22C55E]">
@@ -1487,7 +1549,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       if (addressSuggestions.length > 0) setShowSuggestionsDropdown(true);
                     }}
                     onBlur={() => {
-                      setTimeout(() => setShowSuggestionsDropdown(false), 250);
+                      setTimeout(() => setShowSuggestionsDropdown(false), 300);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -1497,6 +1559,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         }
                       }
                     }}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-form-type="other"
                     placeholder={t.addressPlaceholder}
                     className={`w-full bg-[#080E0A] rounded-xl pl-10 pr-10 py-3 text-sm text-white focus:outline-none transition-all ${
                       validationError?.field === 'serviceAddress'
@@ -1515,7 +1582,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                 {/* Google Places Dropdown */}
                 {showSuggestionsDropdown && addressSuggestions.length > 0 && (
-                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-[#0D1810] border border-[#22C55E]/60 rounded-xl shadow-2xl overflow-hidden max-h-56 overflow-y-auto">
+                  <div
+                    id="booking-field-address-dropdown"
+                    className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-[#0D1810] border-2 border-[#22C55E] rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto pointer-events-auto"
+                    style={{ isolation: 'isolate' }}
+                  >
+                    <div className="px-3 py-1.5 bg-[#08120A] border-b border-[#1A2E1E] text-[10px] font-mono font-bold text-[#86EFAC] flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3 text-[#22C55E]" />
+                        <span>SUGGESTIONS GOOGLE PLACES</span>
+                      </div>
+                      <span className="text-gray-400 font-normal text-[9px]">Sélectionnez votre adresse</span>
+                    </div>
                     {addressSuggestions.map((sug) => (
                       <button
                         key={sug.placeId}
@@ -1524,13 +1602,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                           e.preventDefault();
                           handleSelectAddressSuggestion(sug);
                         }}
+                        onTouchStart={(e) => {
+                          e.preventDefault();
+                          handleSelectAddressSuggestion(sug);
+                        }}
                         onClick={() => handleSelectAddressSuggestion(sug)}
-                        className="w-full px-4 py-3 text-left text-xs text-[#D1D5DB] hover:bg-[#152D1B] hover:text-white transition-colors flex items-start gap-2 border-b border-[#1A2E1E] last:border-0 cursor-pointer min-h-[44px]"
+                        className="w-full px-4 py-3 text-left text-xs text-[#D1D5DB] hover:bg-[#152D1B] hover:text-white transition-colors flex items-start gap-2.5 border-b border-[#1A2E1E] last:border-0 cursor-pointer min-h-[44px]"
                       >
                         <MapPin className="w-4 h-4 text-[#22C55E] shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-white truncate">{sug.mainText}</div>
-                          <div className="text-[10px] text-[#9CA3AF] truncate">{sug.secondaryText}</div>
+                          <div className="font-bold text-white truncate text-sm">{sug.mainText}</div>
+                          <div className="text-[11px] text-[#9CA3AF] truncate">{sug.secondaryText}</div>
                         </div>
                       </button>
                     ))}
@@ -1839,88 +1921,128 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
               {/* Date & Time Slot Selection */}
               <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                  {/* 1. Visual Calendar Picker (French, Monday-first, touch-friendly) */}
                   <div>
                     <label className="block text-xs font-mono font-bold text-[#D1D5DB] mb-1.5 uppercase">
                       {t.dateLabel}
                     </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#22C55E]">
-                        <Calendar className="w-4 h-4" />
-                      </div>
-                      <input
-                        id="booking-field-date"
-                        type="date"
-                        min={new Date().toISOString().split('T')[0]}
-                        value={formData.preferredDate}
-                        onChange={(e) => {
-                          const newDate = e.target.value;
-                          const newSlotOptions = getTimeSlotOptionsForDate(newDate);
-
-                          setFormData(prev => ({
-                            ...prev,
-                            preferredDate: newDate,
-                            preferredTimeSlot: newSlotOptions[0]?.value || ''
-                          }));
-
-                          if (
-                            validationError?.field === 'preferredDate' ||
-                            validationError?.field === 'preferredTimeSlot'
-                          ) {
-                            setValidationError(null);
-                          }
-                        }}
-                        className={`w-full bg-[#080E0A] rounded-xl pl-10 pr-3 py-2.5 text-sm text-white focus:outline-none transition-all ${
-                          validationError?.field === 'preferredDate'
-                            ? 'border-2 border-red-500 bg-red-950/20'
-                            : 'border border-[#203926] focus:border-[#22C55E]'
-                        }`}
-                      />
-                    </div>
+                    <VisualDatePicker
+                      id="booking-field-date"
+                      selectedDate={formData.preferredDate}
+                      onSelectDate={handleDateSelect}
+                      hasError={validationError?.field === 'preferredDate'}
+                    />
+                    {validationError?.field === 'preferredDate' && (
+                      <p className="text-red-400 text-xs mt-1 font-medium">{validationError.message}</p>
+                    )}
                   </div>
 
+                  {/* 2. Real Square Availability Time Slot Selector */}
                   <div>
-                    <label className="block text-xs font-mono font-bold text-[#D1D5DB] mb-1.5 uppercase">
-                      {t.timeSlotLabel}
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#22C55E]">
-                        <Clock className="w-4 h-4" />
-                      </div>
-                      <select
-                        id="booking-field-timeslot"
-                        value={formData.preferredTimeSlot}
-                        onChange={(e) => {
-                          setFormData(prev => ({ ...prev, preferredTimeSlot: e.target.value }));
-                          if (validationError?.field === 'preferredTimeSlot') setValidationError(null);
-                        }}
-                        className={`w-full bg-[#080E0A] rounded-xl pl-10 pr-3 py-2.5 text-sm text-white focus:border-[#22C55E] focus:outline-none transition-all ${
-                          validationError?.field === 'preferredTimeSlot'
-                            ? 'border-2 border-red-500 bg-red-950/20'
-                            : 'border border-[#203926]'
-                        }`}
-                      >
-                        {getTimeSlotOptionsForDate(formData.preferredDate).map(opt => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label[currentLang] || opt.label.fr}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-mono font-bold text-[#D1D5DB] uppercase">
+                        {t.timeSlotLabel}
+                      </label>
+                      {isLoadingSquareAvailability && (
+                        <span className="text-[11px] text-[#22C55E] flex items-center gap-1 font-mono">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-ping" />
+                          Square direct...
+                        </span>
+                      )}
                     </div>
+
+                    {!formData.preferredDate ? (
+                      <div className="p-3 rounded-xl bg-[#080E0A] border border-[#203926] text-xs text-gray-400 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-gray-500 shrink-0" />
+                        <span>Sélectionnez d'abord une date sur le calendrier.</span>
+                      </div>
+                    ) : isLoadingSquareAvailability ? (
+                      <div className="p-3 rounded-xl bg-[#0F2013] border border-[#22C55E]/40 text-xs text-[#86EFAC] flex items-center gap-2.5">
+                        <div className="w-3.5 h-3.5 border-2 border-[#22C55E] border-t-transparent rounded-full animate-spin shrink-0" />
+                        <span>Recherche des disponibilités en direct sur Square...</span>
+                      </div>
+                    ) : squareAvailabilityChecked && squareAvailableSlots.length === 0 ? (
+                      <div className="p-3.5 rounded-xl bg-red-950/30 border border-red-500/50 text-xs text-red-200">
+                        <p className="font-semibold text-red-300">⚠️ Aucun créneau disponible pour cette date.</p>
+                        <p className="text-[11px] text-gray-300 mt-1">
+                          Tous les créneaux sont déjà réservés pour le {formData.preferredDate}. Veuillez choisir une autre date sur le calendrier.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {/* Interactive pills of real Square slots */}
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-[#080E0A] rounded-xl border border-[#203926]">
+                          {squareAvailableSlots.map(slot => (
+                            <button
+                              key={slot.value}
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({ ...prev, preferredTimeSlot: slot.value }));
+                                if (validationError?.field === 'preferredTimeSlot') setValidationError(null);
+                              }}
+                              className={`py-2 px-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer text-center ${
+                                formData.preferredTimeSlot === slot.value
+                                  ? 'bg-[#22C55E] text-black shadow-md shadow-[#22C55E]/40 scale-105 z-10'
+                                  : 'bg-[#101D14] text-gray-200 hover:bg-[#1A3322] hover:text-white border border-[#203926]/60'
+                              }`}
+                            >
+                              {slot.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Synchronized accessible select dropdown */}
+                        <div className="relative">
+                          <select
+                            id="booking-field-timeslot"
+                            value={formData.preferredTimeSlot}
+                            onChange={(e) => {
+                              setFormData(prev => ({ ...prev, preferredTimeSlot: e.target.value }));
+                              if (validationError?.field === 'preferredTimeSlot') setValidationError(null);
+                            }}
+                            className={`w-full bg-[#080E0A] rounded-xl px-3 py-2 text-xs text-white border transition-all ${
+                              validationError?.field === 'preferredTimeSlot'
+                                ? 'border-2 border-red-500 bg-red-950/20'
+                                : 'border border-[#203926] focus:border-[#22C55E]'
+                            }`}
+                          >
+                            <option value="">-- Choisir un créneau horaire --</option>
+                            {squareAvailableSlots.map(slot => (
+                              <option key={slot.value} value={slot.value}>
+                                {slot.label} (Heure locale Québec)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] text-[#86EFAC] px-1">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
+                            {squareAvailableSlots.length} créneaux réels disponibles sur Square
+                          </span>
+                          <span className="text-gray-400 font-mono">
+                            {formData.preferredTimeSlot ? `Sélectionné : ${formData.preferredTimeSlot}` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {validationError?.field === 'preferredTimeSlot' && (
+                      <p className="text-red-400 text-xs mt-1 font-medium">{validationError.message}</p>
+                    )}
                   </div>
                 </div>
 
                 {/* Availability Notice Banner */}
-                {formData.preferredDate && (() => {
-                  const scheduleRule = getScheduleRuleForDate(formData.preferredDate);
-                  if (!scheduleRule) return null;
-                  return (
-                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#0F2013] border border-[#22C55E]/40 text-xs text-[#86EFAC]">
-                      <Clock className="w-4 h-4 text-[#22C55E] shrink-0" />
-                      <span>{scheduleRule.availableNotice[currentLang] || scheduleRule.availableNotice.fr}</span>
-                    </div>
-                  );
-                })()}
+                {formData.preferredDate && squareAvailableSlots.length > 0 && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#0F2013] border border-[#22C55E]/40 text-xs text-[#86EFAC]">
+                    <Clock className="w-4 h-4 text-[#22C55E] shrink-0" />
+                    <span>
+                      📅 Disponibilités Square confirmées pour le {formData.preferredDate} ({squareAvailableSlots.length} créneaux ouverts au Québec).
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Optional booking photos */}
@@ -2015,17 +2137,32 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <span className="text-white">Total estimé :</span>
                   <span className="text-xl font-mono font-black text-[#22C55E]">{finalAdjustedTotal} $ CAD</span>
                 </div>
-              </div>
 
-              {submissionError && (
-                <div className="p-4 rounded-xl bg-[#2A0E0E] border-2 border-red-500 text-xs text-white space-y-2">
-                  <div className="font-bold flex items-center gap-2 text-red-400">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>{t.errorHeader}</span>
+                {/* Submission Error Alert */}
+                {submissionError && (
+                  <div className="mt-3 p-3.5 rounded-xl bg-red-950/60 border border-red-700/80 text-xs text-red-200 space-y-2 animate-shake">
+                    <div className="font-bold flex items-center gap-1.5 text-red-300">
+                      <span>⚠️</span> {t.errorHeader}
+                    </div>
+                    <div className="text-red-200/90 leading-relaxed">{submissionError}</div>
+                    {(submissionError.includes('subscription') || submissionError.includes('Square API') || submissionError.includes('FORBIDDEN') || submissionError.includes('interdite')) && (
+                      <div className="pt-2 border-t border-red-800/60 space-y-2">
+                        <p className="text-[11px] text-gray-300">
+                          Vous pouvez également confirmer votre rendez-vous directement via la page sécurisée officielle Square :
+                        </p>
+                        <button
+                          type="button"
+                          onClick={openOfficialSquareBooking}
+                          className="w-full py-2.5 px-3 rounded-lg bg-[#22C55E] hover:bg-[#16A34A] text-black font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <span>Réserver sur la page officielle Square</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <p>{submissionError}</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 

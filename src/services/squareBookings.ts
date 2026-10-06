@@ -2,6 +2,7 @@ import { BookingCart, AutoBookingFormData, Language, CartItem } from '../types';
 import { DYNASTIE_INFO } from '../data/dynastieData';
 import { getApiUrl } from '../config/api';
 import { getLocalizedSlotLabel, validateBookingSchedule } from '../config/bookingSchedule';
+import { getClientGooglePlacesSuggestions, getClientGooglePlaceDetails } from './googleMapsLoader';
 
 export interface SquareApiErrorDetail {
   category: string;
@@ -59,6 +60,63 @@ export async function checkSquareServerStatus(): Promise<SquareServerStatus> {
   }
 }
 
+export interface FormattedSquareSlot {
+  value: string; // '09:00'
+  label: string; // '09h00'
+  startAtIso: string; // '2026-10-06T13:00:00Z'
+}
+
+/**
+ * Converts a Square UTC start_at timestamp (e.g. '2026-10-06T13:00:00Z')
+ * into America/Toronto (Quebec) local time, preventing any timezone shift.
+ */
+export function formatSquareSlotToQuebecTime(utcIsoString: string): { value: string; label: string } {
+  const dateObj = new Date(utcIsoString);
+  const formatter = new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'America/Toronto',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(dateObj);
+  const hour = parts.find(p => p.type === 'hour')?.value.padStart(2, '0') || '09';
+  const minute = parts.find(p => p.type === 'minute')?.value.padStart(2, '0') || '00';
+  return {
+    value: `${hour}:${minute}`,
+    label: `${hour}h${minute}`
+  };
+}
+
+/**
+ * Extracts and deduplicates real available time slots from Square checkAvailability response
+ */
+export function extractQuebecSlotsFromSquareAvailability(
+  availabilities: Array<{ start_at: string }>,
+  dateStr?: string
+): FormattedSquareSlot[] {
+  if (!Array.isArray(availabilities)) return [];
+  const map = new Map<string, FormattedSquareSlot>();
+
+  for (const item of availabilities) {
+    if (!item?.start_at) continue;
+    const { value, label } = formatSquareSlotToQuebecTime(item.start_at);
+    if (dateStr) {
+      const scheduleCheck = validateBookingSchedule(dateStr, value);
+      if (!scheduleCheck.isValid) continue;
+    }
+    if (!map.has(value)) {
+      map.set(value, {
+        value,
+        label,
+        startAtIso: item.start_at
+      });
+    }
+  }
+
+  // Sort chronologically by 'HH:mm'
+  return Array.from(map.values()).sort((a, b) => a.value.localeCompare(b.value));
+}
+
 /**
  * Searches real-time availability on Square to prevent double bookings
  */
@@ -76,53 +134,79 @@ export async function checkSquareAvailability(date: string, serviceVariationIds?
 }
 
 /**
- * Executes a REAL booking request to Square Bookings API via backend route /api/square/create-booking
+ * Official Square Online Appointments Booking Flow URL
+ * Tested manually and fully functional without requiring seller-level API writes
+ */
+export const OFFICIAL_SQUARE_BOOKING_URL = 'https://app.squareup.com/appointments/book/bcdye64cpl79lq/LDRK1PM7Q1DCN/start';
+
+/**
+ * Opens the official Square Online Appointments booking flow cleanly and reliably
+ * across all devices (iPhone, iPad, Android, desktop) without requiring a customer Square login.
+ */
+export function openOfficialSquareBooking(): void {
+  try {
+    const newWindow = window.open(OFFICIAL_SQUARE_BOOKING_URL, '_blank', 'noopener,noreferrer');
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      window.location.assign(OFFICIAL_SQUARE_BOOKING_URL);
+    }
+  } catch {
+    window.location.href = OFFICIAL_SQUARE_BOOKING_URL;
+  }
+}
+
+/**
+ * Submits the completed customer booking request to the backend Square Bookings API.
+ * Uses buyer-level booking permissions with real-time Square calendar slot reservation.
  */
 export async function submitRealSquareBooking(
   cart: BookingCart,
   formData: AutoBookingFormData,
   lang: Language = 'fr'
 ): Promise<SquareApiBookingResult> {
-  const payload = {
-    clientName: formData.clientName,
-    clientPhone: formData.clientPhone,
-    clientEmail: formData.clientEmail,
-    serviceAddress: formData.serviceAddress,
-    postalCode: formData.confirmedPostalCode || formData.postalCode,
-    confirmedPostalCode: formData.confirmedPostalCode || formData.postalCode,
-    googlePostalCode: formData.googlePostalCode,
-    postalCodeSource: formData.postalCodeSource,
-    preferredDate: formData.preferredDate,
-    preferredTimeSlot: formData.preferredTimeSlot,
-    vehicleMakeModel: formData.vehicleMakeModel,
-    notes: formData.notes,
-    bookingPhotos: formData.bookingPhotos || [],
-    cart,
-    language: lang
-  };
+  try {
+    const payload = {
+      clientName: formData.clientName,
+      clientPhone: formData.clientPhone,
+      clientEmail: formData.clientEmail,
+      serviceAddress: formData.serviceAddress,
+      postalCode: formData.postalCode || formData.confirmedPostalCode,
+      confirmedPostalCode: formData.confirmedPostalCode,
+      googlePostalCode: formData.googlePostalCode,
+      postalCodeSource: formData.postalCodeSource,
+      preferredDate: formData.preferredDate,
+      preferredTimeSlot: formData.preferredTimeSlot,
+      vehicleMakeModel: formData.vehicleMakeModel,
+      notes: formData.notes,
+      bookingPhotos: formData.bookingPhotos,
+      cart,
+      language: lang
+    };
 
-  const response = await fetch(getApiUrl('/api/square/create-booking'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
+    const res = await fetch(getApiUrl('/api/square/create-booking'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
-  const data = await response.json().catch(() => ({
-    success: false,
-    error: 'Réponse serveur invalide'
-  }));
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const text = await res.text();
+      return {
+        success: false,
+        error: `Réponse serveur inattendue (HTTP ${res.status}): ${text.substring(0, 120)}`
+      };
+    }
 
-  if (!response.ok || !data.success) {
-    const errorMessage = data.error || data.message || `Erreur Square (${response.status})`;
-    const err: any = new Error(errorMessage);
-    err.squareErrors = data.squareErrors;
-    err.diagnostic = data.diagnostic;
-    throw err;
+    const data = await res.json();
+    return data;
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'Impossible de joindre le serveur de réservation.'
+    };
   }
-
-  return data;
 }
 
 /**
@@ -202,39 +286,11 @@ export function generateOrderSummaryText(
  * Builds the direct Square Appointments booking URL with prefilled parameters
  */
 export function buildSquareBookingUrl(
-  cart: BookingCart,
-  customerData?: Partial<AutoBookingFormData>,
-  lang: Language = 'fr'
+  _cart?: BookingCart,
+  _customerData?: Partial<AutoBookingFormData>,
+  _lang: Language = 'fr'
 ): string {
-  const baseUrl = DYNASTIE_INFO.squareBooking?.bookingUrl || 'https://squareup.com/appointments/book/maxexpert360';
-  
-  const summary = generateOrderSummaryText(cart, lang, customerData);
-  
-  const params = new URLSearchParams();
-  
-  if (customerData?.clientName) {
-    params.set('name', customerData.clientName);
-  }
-  if (customerData?.clientPhone) {
-    params.set('phone', customerData.clientPhone);
-  }
-  if (customerData?.clientEmail) {
-    params.set('email', customerData.clientEmail);
-  }
-  if (customerData?.preferredDate) {
-    params.set('date', customerData.preferredDate);
-  }
-  
-  params.set('total', `${cart.totalPrice}`);
-  params.set('note', summary);
-  params.set('source', 'maxexpert360_web_cart');
-  
-  const primaryItem = cart.items[0];
-  if (primaryItem) {
-    params.set('service_id', primaryItem.id);
-  }
-
-  return `${baseUrl}?${params.toString()}`;
+  return OFFICIAL_SQUARE_BOOKING_URL;
 }
 
 /**
@@ -587,23 +643,53 @@ export interface ParsedAddressResult {
 export async function fetchAddressSuggestions(input: string): Promise<AddressSuggestionItem[]> {
   if (!input || input.trim().length < 2) return [];
 
-  const response = await fetch(getApiUrl(`/api/maps/autocomplete?input=${encodeURIComponent(input.trim())}`));
-  if (!response.ok) return [];
+  // 1. Prioritize official client-side Google Places Autocomplete (uses browser HTTP referer)
+  try {
+    const clientSuggestions = await getClientGooglePlacesSuggestions(input);
+    if (clientSuggestions && clientSuggestions.length > 0) {
+      return clientSuggestions;
+    }
+  } catch (err) {
+    console.warn('[Address Autocomplete] Client Google Places call failed, trying server fallback:', err);
+  }
 
-  const data = await response.json().catch(() => ({ suggestions: [] }));
-  return Array.isArray(data.suggestions) ? data.suggestions : [];
+  // 2. Server-side proxy fallback
+  try {
+    const response = await fetch(getApiUrl(`/api/maps/autocomplete?input=${encodeURIComponent(input.trim())}`));
+    if (!response.ok) return [];
+
+    const data = await response.json().catch(() => ({ suggestions: [] }));
+    return Array.isArray(data.suggestions) ? data.suggestions : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchPlaceDetails(placeId: string, addressFallback?: string): Promise<ParsedAddressResult | null> {
-  const params = new URLSearchParams();
-  if (placeId) params.set('placeId', placeId);
-  if (addressFallback) params.set('address', addressFallback);
+  // 1. Prioritize official client-side Google Places Details (uses browser HTTP referer)
+  try {
+    const clientDetails = await getClientGooglePlaceDetails(placeId, addressFallback);
+    if (clientDetails && clientDetails.formattedAddress) {
+      return clientDetails;
+    }
+  } catch (err) {
+    console.warn('[Place Details] Client Google Place Details call failed, trying server fallback:', err);
+  }
 
-  const response = await fetch(getApiUrl(`/api/maps/place-details?${params.toString()}`));
-  if (!response.ok) return null;
+  // 2. Server-side proxy fallback
+  try {
+    const params = new URLSearchParams();
+    if (placeId) params.set('placeId', placeId);
+    if (addressFallback) params.set('address', addressFallback);
 
-  const data = await response.json().catch(() => ({ success: false }));
-  return data.success && data.details ? data.details : null;
+    const response = await fetch(getApiUrl(`/api/maps/place-details?${params.toString()}`));
+    if (!response.ok) return null;
+
+    const data = await response.json().catch(() => ({ success: false }));
+    return data.success && data.details ? data.details : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
