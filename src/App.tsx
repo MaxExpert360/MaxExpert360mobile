@@ -63,11 +63,8 @@ export function App() {
     setIsChatOpen(true);
   };
 
-  const handleCartChange = useCallback((newCart: BookingCart, state?: AutoCalculatorState) => {
+  const handleCartChange = useCallback((newCart: BookingCart) => {
     setCart(newCart);
-    if (state) {
-      setActiveCalculatorState(state);
-    }
     setActiveEstimatedPrice(newCart.totalPrice);
   }, []);
 
@@ -91,9 +88,10 @@ export function App() {
 
       setActiveCalculatorState(calcPrev => {
         const hasStains = next.length > 0;
+        const currentExtras = calcPrev.selectedExtras || [];
         const nextExtras = hasStains
-          ? (calcPrev.selectedExtras.includes('difficult_stains') ? calcPrev.selectedExtras : [...calcPrev.selectedExtras, 'difficult_stains'])
-          : calcPrev.selectedExtras.filter(id => id !== 'difficult_stains');
+          ? Array.from(new Set([...currentExtras, 'difficult_stains']))
+          : currentExtras.filter(id => id !== 'difficult_stains');
 
         const nextQuantities = {
           ...(calcPrev.extraQuantities || {})
@@ -118,22 +116,27 @@ export function App() {
 
   const handleToggleExtraFromStains = useCallback((extraId: string) => {
     setActiveCalculatorState(prev => {
-      const exists = prev.selectedExtras.includes(extraId);
+      const currentExtras = prev.selectedExtras || [];
+      const exists = currentExtras.includes(extraId);
       const nextExtras = exists 
-        ? prev.selectedExtras.filter(id => id !== extraId)
-        : [...prev.selectedExtras, extraId];
+        ? currentExtras.filter(id => id !== extraId)
+        : [...currentExtras, extraId];
 
       const nextQuantities = { ...(prev.extraQuantities || {}) };
-      if (!exists && !nextQuantities[extraId]) {
-        nextQuantities[extraId] = 1;
-      }
-      if (exists && extraId === 'difficult_stains') {
-        setSelectedStainTypes([]);
+      if (!exists) {
+        if (!nextQuantities[extraId]) {
+          nextQuantities[extraId] = 1;
+        }
+      } else {
+        delete nextQuantities[extraId];
+        if (extraId === 'difficult_stains') {
+          setSelectedStainTypes([]);
+        }
       }
 
       return {
         ...prev,
-        selectedExtras: nextExtras,
+        selectedExtras: Array.from(new Set(nextExtras)),
         extraQuantities: nextQuantities
       };
     });

@@ -304,12 +304,7 @@ export function createSquareBookingApiPayload(
   const idempotencyKey = `MAX-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   const summary = generateOrderSummaryText(cart, 'fr', customerData);
 
-  let durationMinutes = 120;
-  if (cart.totalPrice >= 200) {
-    durationMinutes = 240;
-  } else if (cart.totalPrice < 100) {
-    durationMinutes = 90;
-  }
+  const durationMinutes = cart.durationMinutes || cart.durationMinutesRange?.max || (cart.totalPrice >= 200 ? 240 : cart.totalPrice < 100 ? 90 : 120);
 
   let startAt: string | undefined = undefined;
   if (customerData.preferredDate) {
@@ -391,10 +386,12 @@ export function createDefaultCart(): BookingCart {
     travelFee: 0,
     minimumAdjustment: 0,
     totalPrice: 209,
+    durationMinutes: 210,
+    durationMinutesRange: { min: 180, max: 240 },
     estimatedDuration: {
       fr: '3 h à 4 h',
-      ua: '3 - 4 години',
-      en: '3 - 4 hours'
+      ua: '3–4 год',
+      en: '3–4 hrs'
     },
     activeCategory: 'auto'
   };
@@ -413,48 +410,58 @@ export function calculateCartSummary(items: CartItem[], activeCategory?: 'auto' 
   const minimumAdjustment = carpetOnly && subtotal > 0 && subtotal < 80 ? 80 - subtotal : 0;
   const totalPrice = subtotal + minimumAdjustment;
 
-  let durFr = '2 h à 3 h';
-  let durUa = '2 - 3 години';
-  let durEn = '2 - 3 hours';
+  let minMinutes = 120;
+  let maxMinutes = 180;
 
   const autoPackage = activeItems.find(it => it.category === 'auto');
   if (autoPackage) {
-    let baseMin = 3;
-    let baseMax = 4;
     if (autoPackage.id.startsWith('express')) {
-      baseMin = 1.5;
-      baseMax = 2;
+      minMinutes = 90;
+      maxMinutes = 120;
     } else if (autoPackage.id.startsWith('remise_a_neuf')) {
-      baseMin = 4;
-      baseMax = 6;
+      minMinutes = 240;
+      maxMinutes = 360;
+    } else {
+      minMinutes = 180;
+      maxMinutes = 240;
     }
 
-    // Add hours for extra services
+    // Add minutes for extra services
     const extraItems = activeItems.filter(it => it.category === 'extra');
-    const extraHours = extraItems.reduce((sum, it) => {
+    const extraMinutes = extraItems.reduce((sum, it) => {
       const extra = EXTRA_SERVICES.find(e => e.id === it.id);
-      return sum + ((extra?.durationHours ?? 1) * it.quantity);
+      const hours = extra?.durationHours ?? 1;
+      return sum + Math.round(hours * 60 * it.quantity);
     }, 0);
 
-    const totalMin = baseMin + extraHours;
-    const totalMax = baseMax + extraHours;
-
-    durFr = formatDurationLocalized(totalMin, totalMax, 'fr');
-    durUa = formatDurationLocalized(totalMin, totalMax, 'ua');
-    durEn = formatDurationLocalized(totalMin, totalMax, 'en');
+    minMinutes += extraMinutes;
+    maxMinutes += extraMinutes;
+  } else if (activeCategory === 'truck') {
+    minMinutes = 150;
+    maxMinutes = 240;
+  } else if (activeCategory === 'furniture') {
+    minMinutes = 90;
+    maxMinutes = 180;
+  } else if (activeCategory === 'carpet') {
+    minMinutes = 60;
+    maxMinutes = 150;
+  } else if (activeCategory === 'mattress') {
+    minMinutes = 60;
+    maxMinutes = 120;
   } else if (totalPrice >= 250) {
-    durFr = '4 h à 6 h';
-    durUa = '4 - 6 годин';
-    durEn = '4 - 6 hours';
+    minMinutes = 240;
+    maxMinutes = 360;
   } else if (totalPrice >= 170) {
-    durFr = '3 h à 4 h';
-    durUa = '3 - 4 години';
-    durEn = '3 - 4 hours';
+    minMinutes = 180;
+    maxMinutes = 240;
   } else if (totalPrice < 120 && totalPrice > 0) {
-    durFr = '1 h à 2 h';
-    durUa = '1 - 2 години';
-    durEn = '1 - 2 hours';
+    minMinutes = 60;
+    maxMinutes = 120;
   }
+
+  const durFr = formatDurationLocalized(minMinutes, maxMinutes, 'fr');
+  const durUa = formatDurationLocalized(minMinutes, maxMinutes, 'ua');
+  const durEn = formatDurationLocalized(minMinutes, maxMinutes, 'en');
 
   return {
     items: activeItems,
@@ -462,6 +469,8 @@ export function calculateCartSummary(items: CartItem[], activeCategory?: 'auto' 
     travelFee: 0,
     minimumAdjustment,
     totalPrice,
+    durationMinutes: Math.round((minMinutes + maxMinutes) / 2),
+    durationMinutesRange: { min: minMinutes, max: maxMinutes },
     estimatedDuration: {
       fr: durFr,
       ua: durUa,

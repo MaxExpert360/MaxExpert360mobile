@@ -106,8 +106,8 @@ export const DETAILING_PACKAGES: DetailingPackage[] = [
     },
     duration: {
       fr: '1 h 30 min à 2 h',
-      ua: '1.5 - 2 години',
-      en: '1.5 - 2 hours'
+      ua: '1 год 30 хв – 2 год',
+      en: '1 hr 30 min – 2 hrs'
     },
     image: 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=1000&q=80',
     features: {
@@ -171,8 +171,8 @@ export const DETAILING_PACKAGES: DetailingPackage[] = [
     },
     duration: {
       fr: '3 h à 4 h',
-      ua: '3 - 4 години',
-      en: '3 - 4 hours'
+      ua: '3–4 год',
+      en: '3–4 hrs'
     },
     image: 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&w=1000&q=80',
     features: {
@@ -245,8 +245,8 @@ export const DETAILING_PACKAGES: DetailingPackage[] = [
     },
     duration: {
       fr: '4 h à 6 h',
-      ua: '4 - 6 годин',
-      en: '4 - 6 hours'
+      ua: '4–6 год',
+      en: '4–6 hrs'
     },
     image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1000&q=80',
     features: {

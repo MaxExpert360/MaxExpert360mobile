@@ -173,6 +173,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     packageId: initialState?.packageId || 'complet',
     feetLength: initialState?.feetLength || 22,
     selectedExtras: initialState?.selectedExtras || [],
+    extraQuantities: initialState?.extraQuantities || {},
     serviceLocation: 'mobile',
     serviceAddress: '',
     postalCode: '',
@@ -278,7 +279,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           vehicleCategory: initialState.vehicleCategory || prev.vehicleCategory,
           packageId: initialState.packageId || prev.packageId,
           feetLength: initialState.feetLength || prev.feetLength,
-          selectedExtras: initialState.selectedExtras || prev.selectedExtras
+          selectedExtras: initialState.selectedExtras || prev.selectedExtras,
+          extraQuantities: initialState.extraQuantities || prev.extraQuantities
         }));
 
         const isDefaultCatLabel = !vehicleMakeModelInput.trim() || 

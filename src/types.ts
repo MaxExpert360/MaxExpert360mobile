@@ -201,6 +201,11 @@ export interface BookingCart {
   travelFee: number;
   minimumAdjustment: number;
   totalPrice: number;
+  durationMinutes?: number;
+  durationMinutesRange?: {
+    min: number;
+    max: number;
+  };
   estimatedDuration: {
     fr: string;
     ua: string;

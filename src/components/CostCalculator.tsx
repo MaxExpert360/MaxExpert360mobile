@@ -34,7 +34,7 @@ import {
   DYNASTIE_INFO 
 } from '../data/dynastieData';
 import { calculateCartSummary, openOfficialSquareBooking } from '../services/squareBookings';
-import { formatDurationLocalized } from '../utils/durationFormatter';
+import { formatDurationLocalized, formatSingleDuration } from '../utils/durationFormatter';
 import { 
   AUTO_LAUNCH_PROMO, 
   isAutoPromoActive, 
@@ -49,7 +49,7 @@ interface CostCalculatorProps {
   activeCategoryTab?: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck';
   onCategoryTabChange?: (tab: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck') => void;
   calcState?: AutoCalculatorState;
-  onCalcStateChange?: (state: AutoCalculatorState) => void;
+  onCalcStateChange?: React.Dispatch<React.SetStateAction<AutoCalculatorState>> | ((updater: (prev: AutoCalculatorState) => AutoCalculatorState) => void) | ((state: AutoCalculatorState) => void);
 }
 
 // Pure calculation helper for detailing auto packages
@@ -62,7 +62,10 @@ export function calculateAutoTotal(
   const selectedPkg = DETAILING_PACKAGES.find(p => p.id === packageId) || DETAILING_PACKAGES[1];
   const vehicleKey: 'auto' | 'suv' | 'truck_van' = (category === 'suv' || category === 'truck_van') ? category : 'auto';
   const basePrice = selectedPkg.prices[vehicleKey] ?? selectedPkg.prices.auto;
-  const extrasList = selectedExtras
+
+  // Deduplicate extras to prevent duplicate counting
+  const uniqueExtraIds = Array.from(new Set(selectedExtras));
+  const extrasList = uniqueExtraIds
     .map(extraId => EXTRA_SERVICES.find(e => e.id === extraId))
     .filter(Boolean) as ExtraDetailingService[];
 
@@ -71,33 +74,36 @@ export function calculateAutoTotal(
     return sum + (extra.price * qty);
   }, 0);
 
-  const extraHours = extrasList.reduce((sum, extra) => {
+  const extraMinutes = extrasList.reduce((sum, extra) => {
     const qty = Math.max(1, extraQuantities[extra.id] || 1);
-    return sum + ((extra.durationHours ?? 1) * qty);
+    const durHours = extra.durationHours ?? 1;
+    return sum + Math.round(durHours * 60 * qty);
   }, 0);
 
-  const baseRange = selectedPkg.id === 'express'
-    ? { min: 1.5, max: 2 }
+  const baseMinutesRange = selectedPkg.id === 'express'
+    ? { min: 90, max: 120 }
     : selectedPkg.id === 'remise_a_neuf'
-    ? { min: 4, max: 6 }
-    : { min: 3, max: 4 };
+    ? { min: 240, max: 360 }
+    : { min: 180, max: 240 };
 
-  const totalMin = baseRange.min + extraHours;
-  const totalMax = baseRange.max + extraHours;
+  const totalMinMinutes = baseMinutesRange.min + extraMinutes;
+  const totalMaxMinutes = baseMinutesRange.max + extraMinutes;
 
   return {
     selectedPkg,
     vehicleKey,
     basePrice,
     extrasSum,
-    extraHours,
+    extraMinutes,
+    extraHours: extraMinutes / 60,
     extrasList,
     totalPrice: basePrice + extrasSum,
-    durationHoursRange: { min: totalMin, max: totalMax },
+    durationMinutesRange: { min: totalMinMinutes, max: totalMaxMinutes },
+    durationHoursRange: { min: totalMinMinutes / 60, max: totalMaxMinutes / 60 },
     duration: {
-      fr: formatDurationLocalized(totalMin, totalMax, 'fr'),
-      ua: formatDurationLocalized(totalMin, totalMax, 'ua'),
-      en: formatDurationLocalized(totalMin, totalMax, 'en')
+      fr: formatDurationLocalized(totalMinMinutes, totalMaxMinutes, 'fr'),
+      ua: formatDurationLocalized(totalMinMinutes, totalMaxMinutes, 'ua'),
+      en: formatDurationLocalized(totalMinMinutes, totalMaxMinutes, 'en')
     }
   };
 }
@@ -137,8 +143,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
 
   const setCalcState = (updater: (prev: AutoCalculatorState) => AutoCalculatorState) => {
     if (onCalcStateChange) {
-      const next = updater(calcState);
-      onCalcStateChange(next);
+      (onCalcStateChange as any)(updater);
     } else {
       setInternalCalcState(updater);
     }
@@ -341,7 +346,8 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
         totalPrice: autoData.basePrice
       });
 
-      calcState.selectedExtras.forEach(extraId => {
+      const uniqueExtraIds = Array.from(new Set(calcState.selectedExtras));
+      uniqueExtraIds.forEach(extraId => {
         const extra = EXTRA_SERVICES.find(e => e.id === extraId);
         if (extra) {
           const qty = Math.max(1, calcState.extraQuantities?.[extra.id] || 1);
@@ -462,26 +468,31 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
     return calculateCartSummary(items, activeTab);
   }, [activeTab, calcState, selectedFurniture, carpetSqFt, carpetStairsCount, selectedMattress, selectedTruckId]);
 
-  // Keep parent cart state in sync
+  // Keep parent cart state in sync without stale calcState loop
   React.useEffect(() => {
     if (onCartChange) {
-      onCartChange(currentCart, calcState);
+      onCartChange(currentCart);
     }
-  }, [currentCart, calcState, onCartChange]);
+  }, [currentCart, onCartChange]);
 
   const handleToggleExtra = (extraId: string) => {
     setCalcState(prev => {
-      const exists = prev.selectedExtras.includes(extraId);
+      const currentList = prev.selectedExtras || [];
+      const exists = currentList.includes(extraId);
       const nextExtras = exists 
-        ? prev.selectedExtras.filter(id => id !== extraId)
-        : [...prev.selectedExtras, extraId];
+        ? currentList.filter(id => id !== extraId)
+        : [...currentList, extraId];
       const nextQuantities = { ...(prev.extraQuantities || {}) };
-      if (!exists && !nextQuantities[extraId]) {
-        nextQuantities[extraId] = 1;
+      if (!exists) {
+        if (!nextQuantities[extraId]) {
+          nextQuantities[extraId] = 1;
+        }
+      } else {
+        delete nextQuantities[extraId];
       }
       return {
         ...prev,
-        selectedExtras: nextExtras,
+        selectedExtras: Array.from(new Set(nextExtras)),
         extraQuantities: nextQuantities
       };
     });
@@ -788,7 +799,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                                   +
                                 </button>
                                 <span className="font-mono font-bold text-[#15803D] text-[11px] ml-1 bg-white px-1.5 py-0.5 rounded border border-[#BEE7CB]">
-                                  +{totalExtraPrice} $ · +{totalExtraHours} h
+                                  +{totalExtraPrice} $ · +{formatSingleDuration(Math.round((extra.durationHours ?? 1) * 60) * qty, currentLang)}
                                 </span>
                               </div>
                             </div>
@@ -1036,14 +1047,20 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                       {calculation.selectedExtrasList.map(opt => {
                         const qty = Math.max(1, calcState.extraQuantities?.[opt.id] || 1);
                         const itemTotalPrice = opt.price * qty;
-                        const itemTotalHours = (opt.durationHours ?? 1) * qty;
-                        const durBadge = opt.durationHours === 0.5 
-                          ? (qty === 1 ? '+30 min' : `+${itemTotalHours} h`)
-                          : `+${itemTotalHours} h`;
+                        const itemTotalMinutes = Math.round((opt.durationHours ?? 1) * 60) * qty;
+                        const durBadge = `+${formatSingleDuration(itemTotalMinutes, currentLang)}`;
                         const unitName = opt.id === 'difficult_stains'
-                          ? (qty > 1 ? ` (${qty} taches)` : ' (1 tache)')
+                          ? (currentLang === 'fr' 
+                              ? (qty > 1 ? ` (${qty} taches)` : ' (1 tache)')
+                              : currentLang === 'ua'
+                              ? (qty > 1 ? ` (${qty} плям)` : ' (1 пляма)')
+                              : (qty > 1 ? ` (${qty} stains)` : ' (1 stain)'))
                           : opt.id === 'odor_treatment'
-                          ? (qty > 1 ? ` (${qty} interventions)` : ' (1 intervention)')
+                          ? (currentLang === 'fr'
+                              ? (qty > 1 ? ` (${qty} interventions)` : ' (1 intervention)')
+                              : currentLang === 'ua'
+                              ? (qty > 1 ? ` (${qty} процедур)` : ' (1 процедура)')
+                              : (qty > 1 ? ` (${qty} treatments)` : ' (1 treatment)'))
                           : (qty > 1 ? ` (${qty}x)` : '');
 
                         return (
