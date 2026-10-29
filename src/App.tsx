@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { ServicesSection } from './components/ServicesSection';
 import { DifficultStainsSection } from './components/DifficultStainsSection';
-import { BeforeAfterSection } from './components/BeforeAfterSection';
+import { AvantApresVideos } from './components/AvantApresVideos';
 import { ReviewsSection } from './components/ReviewsSection';
 import { CostCalculator } from './components/CostCalculator';
 import { ContactSection } from './components/ContactSection';
@@ -14,6 +14,7 @@ import { QuickCallbackModal } from './components/QuickCallbackModal';
 import { WriteReviewModal } from './components/WriteReviewModal';
 import { GeminiChatModal } from './components/GeminiChatModal';
 import { FloatingAiBotLauncher } from './components/FloatingAiBotLauncher';
+import FacebookBanner from './components/FacebookBanner';
 import { 
   AutoCalculatorState, 
   Language, 
@@ -36,13 +37,15 @@ export function App() {
   // Custom calculator state passed to booking modal
   const [activeCalculatorState, setActiveCalculatorState] = useState<AutoCalculatorState>({
     vehicleCategory: 'suv',
-    packageId: 'interieur_exterieur_complet',
+    packageId: 'complet',
     feetLength: 22,
-    selectedExtras: ['poils_animaux'],
+    selectedExtras: [],
+    extraQuantities: {},
     serviceLocation: 'mobile',
     frequencyDiscount: 'once'
   });
-  const [activeEstimatedPrice, setActiveEstimatedPrice] = useState<number>(199);
+  const [activeEstimatedPrice, setActiveEstimatedPrice] = useState<number>(209);
+  const [selectedStainTypes, setSelectedStainTypes] = useState<string[]>([]);
 
   const handleOpenBooking = () => {
     setIsBookingOpen(true);
@@ -60,18 +63,91 @@ export function App() {
     setIsChatOpen(true);
   };
 
-  const handleOpenBookingWithCart = (newCart: BookingCart, state: AutoCalculatorState) => {
+  const handleCartChange = useCallback((newCart: BookingCart, state?: AutoCalculatorState) => {
+    setCart(newCart);
+    if (state) {
+      setActiveCalculatorState(state);
+    }
+    setActiveEstimatedPrice(newCart.totalPrice);
+  }, []);
+
+  const handleOpenBookingWithCart = useCallback((newCart: BookingCart, state: AutoCalculatorState) => {
     setCart(newCart);
     setActiveCalculatorState(state);
     setActiveEstimatedPrice(newCart.totalPrice);
     setIsBookingOpen(true);
-  };
+  }, []);
 
-  const handleOpenBookingWithDetails = (state: AutoCalculatorState, estimatedPrice: number) => {
+  const handleOpenBookingWithDetails = useCallback((state: AutoCalculatorState, estimatedPrice: number) => {
     setActiveCalculatorState(state);
     setActiveEstimatedPrice(estimatedPrice);
     setIsBookingOpen(true);
-  };
+  }, []);
+
+  const handleToggleStainType = useCallback((stainKey: string) => {
+    setSelectedStainTypes(prev => {
+      const exists = prev.includes(stainKey);
+      const next = exists ? prev.filter(k => k !== stainKey) : [...prev, stainKey];
+
+      setActiveCalculatorState(calcPrev => {
+        const hasStains = next.length > 0;
+        const nextExtras = hasStains
+          ? (calcPrev.selectedExtras.includes('difficult_stains') ? calcPrev.selectedExtras : [...calcPrev.selectedExtras, 'difficult_stains'])
+          : calcPrev.selectedExtras.filter(id => id !== 'difficult_stains');
+
+        const nextQuantities = {
+          ...(calcPrev.extraQuantities || {})
+        };
+
+        if (hasStains) {
+          nextQuantities.difficult_stains = next.length;
+        } else {
+          delete nextQuantities.difficult_stains;
+        }
+
+        return {
+          ...calcPrev,
+          selectedExtras: nextExtras,
+          extraQuantities: nextQuantities
+        };
+      });
+
+      return next;
+    });
+  }, []);
+
+  const handleToggleExtraFromStains = useCallback((extraId: string) => {
+    setActiveCalculatorState(prev => {
+      const exists = prev.selectedExtras.includes(extraId);
+      const nextExtras = exists 
+        ? prev.selectedExtras.filter(id => id !== extraId)
+        : [...prev.selectedExtras, extraId];
+
+      const nextQuantities = { ...(prev.extraQuantities || {}) };
+      if (!exists && !nextQuantities[extraId]) {
+        nextQuantities[extraId] = 1;
+      }
+      if (exists && extraId === 'difficult_stains') {
+        setSelectedStainTypes([]);
+      }
+
+      return {
+        ...prev,
+        selectedExtras: nextExtras,
+        extraQuantities: nextQuantities
+      };
+    });
+  }, []);
+
+  const handleUpdateExtraQuantityFromStains = useCallback((extraId: string, qty: number) => {
+    setActiveCalculatorState(prev => ({
+      ...prev,
+      extraQuantities: {
+        ...(prev.extraQuantities || {}),
+        [extraId]: Math.max(1, qty)
+      }
+    }));
+  }, []);
 
   const scrollToCalculator = (tab?: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck') => {
     if (tab) {
@@ -99,6 +175,9 @@ export function App() {
       {/* Main Page Flow */}
       <main className="flex-1">
         
+        {/* Facebook Banner */}
+        <FacebookBanner />
+
         {/* 2. Hero Section: NETTOYAGE MOBILE PROFESSIONNEL & GMC Savana */}
         <Hero 
           currentLang={currentLang}
@@ -117,10 +196,17 @@ export function App() {
         <DifficultStainsSection 
           currentLang={currentLang}
           onOpenBooking={handleOpenBooking}
+          selectedExtras={activeCalculatorState.selectedExtras}
+          extraQuantities={activeCalculatorState.extraQuantities}
+          onToggleExtra={handleToggleExtraFromStains}
+          onUpdateExtraQuantity={handleUpdateExtraQuantityFromStains}
+          selectedStainTypes={selectedStainTypes}
+          onToggleStainType={handleToggleStainType}
+          onScrollToCalculator={() => scrollToCalculator('auto')}
         />
 
-        {/* 5. Avant / Après Section: Sièges, Meubles, Matelas, Tapis */}
-        <BeforeAfterSection 
+        {/* 5. Nos Réalisations Authentiques : Vidéo + Photo Avant / Après */}
+        <AvantApresVideos 
           currentLang={currentLang}
           onOpenBooking={handleOpenBooking}
         />
@@ -131,14 +217,16 @@ export function App() {
           onOpenWriteReview={handleOpenWriteReview}
         />
 
-        {/* 7. Pricing & Configurator: Existing CostCalculator preserved */}
+        {/* 7. Pricing & Configurator: Synchronized CostCalculator */}
         <CostCalculator 
           currentLang={currentLang}
           activeCategoryTab={activeCategoryTab}
           onCategoryTabChange={setActiveCategoryTab}
+          calcState={activeCalculatorState}
+          onCalcStateChange={setActiveCalculatorState}
           onOpenBookingWithCart={handleOpenBookingWithCart}
           onOpenBookingWithDetails={handleOpenBookingWithDetails}
-          onCartChange={setCart}
+          onCartChange={handleCartChange}
         />
         {/* 8. Contact final */}
         <ContactSection 

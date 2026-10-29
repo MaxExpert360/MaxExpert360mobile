@@ -1,5 +1,6 @@
 import { BookingCart, AutoBookingFormData, Language, CartItem } from '../types';
-import { DYNASTIE_INFO } from '../data/dynastieData';
+import { DYNASTIE_INFO, EXTRA_SERVICES } from '../data/dynastieData';
+import { formatDurationLocalized } from '../utils/durationFormatter';
 import { getApiUrl } from '../config/api';
 import { getLocalizedSlotLabel, validateBookingSchedule } from '../config/bookingSchedule';
 import { getClientGooglePlacesSuggestions, getClientGooglePlaceDetails } from './googleMapsLoader';
@@ -254,8 +255,8 @@ export function generateOrderSummaryText(
     lines.push(`${isFr ? 'Ajustement minimum de déplacement' : 'Minimum service adjustment'}: +${cart.minimumAdjustment} $ CAD`);
   }
   
-  lines.push(`${isFr ? 'TOTAL ESTIMÉ' : isUa ? 'РАЗОМ' : 'TOTAL ESTIMATE'}: ${cart.totalPrice} $ CAD`);
-  lines.push(`${isFr ? 'Durée indicative' : isUa ? 'Орієнтовний час' : 'Est. Duration'}: ${cart.estimatedDuration[lang] || cart.estimatedDuration.fr}`);
+  lines.push(`${isFr ? 'Prix total estimé' : isUa ? 'РАЗОМ' : 'TOTAL ESTIMATE'}: ${cart.totalPrice} $ CAD`);
+  lines.push(`${isFr ? 'Durée totale estimée' : isUa ? 'Орієнтовний час' : 'Est. Duration'}: ${cart.estimatedDuration[lang] || cart.estimatedDuration.fr}`);
   lines.push(`${isFr ? 'Service' : 'Format'}: Mobile à domicile (Drummondville)`);
 
   if (customerData) {
@@ -363,17 +364,17 @@ export async function copySummaryToClipboard(text: string): Promise<boolean> {
 }
 
 /**
- * Creates default initial cart (SUV Interieur + Exterieur Complet + Poils d'animaux)
+ * Creates default initial cart (SUV Interieur + Exterieur Complet)
  */
 export function createDefaultCart(): BookingCart {
   return {
     items: [
       {
-        id: 'interieur_exterieur_complet_suv',
+        id: 'complet_suv',
         category: 'auto',
         name: {
           fr: 'Intérieur + Extérieur Complet',
-          ua: 'Комплекс: Салон + Кузов',
+          ua: 'Повний Комплекс: Салон + Кузов',
           en: 'Complete Interior + Exterior'
         },
         details: {
@@ -382,28 +383,16 @@ export function createDefaultCart(): BookingCart {
           en: 'SUV / Crossover'
         },
         quantity: 1,
-        unitPrice: 179,
-        totalPrice: 179
-      },
-      {
-        id: 'poils_animaux',
-        category: 'extra',
-        name: {
-          fr: 'Élimination poils d\'animaux & brossage',
-          ua: 'Видалення шерсті тварин',
-          en: 'Pet hair removal & brushing'
-        },
-        quantity: 1,
-        unitPrice: 20,
-        totalPrice: 20
+        unitPrice: 209,
+        totalPrice: 209
       }
     ],
-    subtotal: 199,
+    subtotal: 209,
     travelFee: 0,
     minimumAdjustment: 0,
-    totalPrice: 199,
+    totalPrice: 209,
     estimatedDuration: {
-      fr: '3 - 4 heures',
+      fr: '3 h à 4 h',
       ua: '3 - 4 години',
       en: '3 - 4 hours'
     },
@@ -424,20 +413,45 @@ export function calculateCartSummary(items: CartItem[], activeCategory?: 'auto' 
   const minimumAdjustment = carpetOnly && subtotal > 0 && subtotal < 80 ? 80 - subtotal : 0;
   const totalPrice = subtotal + minimumAdjustment;
 
-  let durFr = '2 - 3 heures';
+  let durFr = '2 h à 3 h';
   let durUa = '2 - 3 години';
   let durEn = '2 - 3 hours';
 
-  if (totalPrice >= 250) {
-    durFr = '4 - 6 heures';
+  const autoPackage = activeItems.find(it => it.category === 'auto');
+  if (autoPackage) {
+    let baseMin = 3;
+    let baseMax = 4;
+    if (autoPackage.id.startsWith('express')) {
+      baseMin = 1.5;
+      baseMax = 2;
+    } else if (autoPackage.id.startsWith('remise_a_neuf')) {
+      baseMin = 4;
+      baseMax = 6;
+    }
+
+    // Add hours for extra services
+    const extraItems = activeItems.filter(it => it.category === 'extra');
+    const extraHours = extraItems.reduce((sum, it) => {
+      const extra = EXTRA_SERVICES.find(e => e.id === it.id);
+      return sum + ((extra?.durationHours ?? 1) * it.quantity);
+    }, 0);
+
+    const totalMin = baseMin + extraHours;
+    const totalMax = baseMax + extraHours;
+
+    durFr = formatDurationLocalized(totalMin, totalMax, 'fr');
+    durUa = formatDurationLocalized(totalMin, totalMax, 'ua');
+    durEn = formatDurationLocalized(totalMin, totalMax, 'en');
+  } else if (totalPrice >= 250) {
+    durFr = '4 h à 6 h';
     durUa = '4 - 6 годин';
     durEn = '4 - 6 hours';
   } else if (totalPrice >= 170) {
-    durFr = '3 - 4 heures';
+    durFr = '3 h à 4 h';
     durUa = '3 - 4 години';
     durEn = '3 - 4 hours';
   } else if (totalPrice < 120 && totalPrice > 0) {
-    durFr = '1 - 2 heures';
+    durFr = '1 h à 2 h';
     durUa = '1 - 2 години';
     durEn = '1 - 2 hours';
   }

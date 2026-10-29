@@ -35,6 +35,11 @@ export interface BookingRequestInput {
     subtotal: number;
     minimumAdjustment: number;
     currency?: string;
+    estimatedDuration?: {
+      fr: string;
+      ua: string;
+      en: string;
+    };
   };
   language?: 'fr' | 'ua' | 'en';
 }
@@ -890,11 +895,13 @@ export class SquareBookingsService {
       input.cart.items.reduce((sum, item) => sum + (item.totalPrice ?? (item as any).finalPrice ?? (item as any).basePrice ?? 0), 0)
     );
 
+    const durationLabel = input.cart.estimatedDuration?.fr || input.cart.estimatedDuration?.en || '';
     const customerNote = [
       `=== MAXEXPERT360 SERVICE MOBILE ===`,
       `Prestations demandées :`,
       ...itemNamesFormatted.map(name => `• ${name}`),
-      `Total Estimé : ${calculatedTotal} $ CAD`,
+      `Prix total estimé : ${calculatedTotal} $ CAD`,
+      durationLabel ? `Durée totale estimée : ${durationLabel}` : '',
       input.vehicleMakeModel ? `Véhicule/Meuble : ${input.vehicleMakeModel}` : '',
       input.notes ? `Instructions : ${input.notes}` : ''
     ].filter(Boolean).join('\n');
@@ -903,8 +910,9 @@ export class SquareBookingsService {
       `Adresse intervention : ${input.serviceAddress}`,
       `Client : ${input.clientName} (${input.clientPhone})`,
       `Créneau souhaité : ${input.preferredTimeSlot}`,
+      durationLabel ? `Durée totale estimée : ${durationLabel}` : '',
       `Total Devis : ${calculatedTotal} $ CAD (Déplacement inclus Drummondville)`
-    ].join('\n');
+    ].filter(Boolean).join('\n');
 
     // 7. Prepare Complete Booking Payload
     const idempotencyKey = `booking_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;

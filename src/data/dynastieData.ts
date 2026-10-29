@@ -101,11 +101,11 @@ export const DETAILING_PACKAGES: DetailingPackage[] = [
     popular: false,
     prices: {
       auto: 99,
-      suv: 119,
-      truck_van: 139
+      suv: 139,
+      truck_van: 119
     },
     duration: {
-      fr: '1.5 - 2 heures',
+      fr: '1 h 30 min à 2 h',
       ua: '1.5 - 2 години',
       en: '1.5 - 2 hours'
     },
@@ -166,11 +166,11 @@ export const DETAILING_PACKAGES: DetailingPackage[] = [
     popular: true,
     prices: {
       auto: 149,
-      suv: 179,
-      truck_van: 209
+      suv: 209,
+      truck_van: 179
     },
     duration: {
-      fr: '3 - 4 heures',
+      fr: '3 h à 4 h',
       ua: '3 - 4 години',
       en: '3 - 4 hours'
     },
@@ -240,11 +240,11 @@ export const DETAILING_PACKAGES: DetailingPackage[] = [
     popular: false,
     prices: {
       auto: 199,
-      suv: 239,
-      truck_van: 269
+      suv: 269,
+      truck_van: 239
     },
     duration: {
-      fr: '4 - 6 heures',
+      fr: '4 h à 6 h',
       ua: '4 - 6 годин',
       en: '4 - 6 hours'
     },
@@ -310,11 +310,11 @@ export const CARPET_SERVICES = [
   { 
     id: 'escalier_complet', 
     name: { fr: "Escalier moquetté (marches)", ua: 'Килимові сходинки', en: 'Carpeted Stairs (steps)' }, 
-    price: 5.30,
+    price: 6.00,
     description: { 
-      fr: '5,30 $ / marche (marches et contremarches)', 
-      ua: '5,30 $ за сходинку (сходинки та підсходинки)', 
-      en: '$5.30 / step (steps and risers)' 
+      fr: '6,00 $ / marche (marches et contremarches)', 
+      ua: '6,00 $ за сходинку (сходинки та підсходинки)', 
+      en: '$6.00 / step (steps and risers)' 
     } 
   }
 ];
@@ -439,26 +439,26 @@ export const RESIDENTIAL_FURNITURE_SERVICES: DetailingServiceItem[] = [
     iconName: 'Layers',
     image: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=1000&q=80',
     subcategories: {
-      fr: ['Tapis de salon & carpettes (à partir de 0,30 $/pi²)', 'Moquettes complètes de chambres/maison', 'Escaliers moquettés (5,30 $ / marche)', 'Tapis d\'entrée & passages'],
-      ua: ['Килими у вітальнях (від 0,30 $/кв. фут)', 'Ковролін у спальнях та коридорах', 'Килимові сходи (5,30 $ за сходинку)', 'Вхідні та приліжкові килимки'],
-      en: ['Living room area rugs (from $0.30 / sq ft)', 'Wall-to-wall room carpets', 'Carpeted staircases ($5.30 / step)', 'Entry runners & hallway rugs']
+      fr: ['Tapis de salon & carpettes (à partir de 0,30 $/pi²)', 'Moquettes complètes de chambres/maison', 'Escaliers moquettés (6,00 $ / marche)', 'Tapis d\'entrée & passages'],
+      ua: ['Килими у вітальнях (від 0,30 $/кв. фут)', 'Ковролін у спальнях та коридорах', 'Килимові сходи (6,00 $ за сходинку)', 'Вхідні та приліжкові килимки'],
+      en: ['Living room area rugs (from $0.30 / sq ft)', 'Wall-to-wall room carpets', 'Carpeted staircases ($6.00 / step)', 'Entry runners & hallway rugs']
     },
     highlights: {
       fr: [
         'Tarif avantageux à partir de 0,30 $ / pi²',
-        'Escaliers à 5,30 $ / marche',
+        'Escaliers à 6,00 $ / marche',
         'Désinfection thermique en profondeur',
         'Ravive les fibres et couleurs d\'origine'
       ],
       ua: [
         'Вигідна ціна від 0,30 $ / кв. фут',
-        'Сходи по 5,30 $ за сходинку',
+        'Сходи по 6,00 $ за сходинку',
         'Глибока термічна дезінфекція',
         'Оновлення структури ворсу'
       ],
       en: [
         'Affordable starting at $0.30 / sq ft',
-        'Stairs at $5.30 / step',
+        'Stairs at $6.00 / step',
         'Deep thermal disinfection',
         'Revitalizes fiber spring & original colors'
       ]
@@ -561,13 +561,14 @@ export const EXTRA_SERVICES: ExtraDetailingService[] = [
   {
     id: 'pet_hair',
     name: {
-      fr: 'Poils d\'animaux (Extraction minutieuse)',
-      ua: 'Видалення шерсті тварин',
-      en: 'Pet hair removal (Deep extraction)'
+      fr: 'Poils d\'animaux — Extraction minutieuse',
+      ua: 'Видалення шерсті тварин — ретельна екстракція',
+      en: 'Pet hair removal — Deep extraction'
     },
-    price: 20,
-    priceMax: 40,
-    unit: { fr: 'supplément (+20$ à 40$)', ua: 'доплата (+20$ до 40$)', en: 'add-on (+20$ to 40$)' },
+    price: 50,
+    priceMax: 50,
+    durationHours: 1,
+    unit: { fr: '+50 $ CAD · +1 h', ua: '+50 $ CAD · +1 год', en: '+50 $ CAD · +1 h' },
     iconName: 'Dog',
     category: 'cleaning',
     description: {
@@ -580,16 +581,17 @@ export const EXTRA_SERVICES: ExtraDetailingService[] = [
     id: 'heavy_dirt',
     name: {
       fr: 'Saleté excessive / Boue incrustée',
-      ua: 'Надмірне забруднення / Болото',
-      en: 'Excessive grime / heavy dirt'
+      ua: 'Надмірне забруднення / Вʼїдене болото',
+      en: 'Excessive grime / Heavy mud'
     },
-    price: 20,
-    priceMax: 40,
-    unit: { fr: 'supplément (+20$ à 40$)', ua: 'доплата (+20$ до 40$)', en: 'add-on (+20$ to 40$)' },
+    price: 50,
+    priceMax: 50,
+    durationHours: 1,
+    unit: { fr: '+50 $ CAD · +1 h', ua: '+50 $ CAD · +1 год', en: '+50 $ CAD · +1 h' },
     iconName: 'AlertTriangle',
     category: 'cleaning',
     description: {
-      fr: 'Travail approfondi pour véhicules de chantier, retour de chasse/camping ou sable abondant.',
+      fr: 'Travail approfondi pour véhicules de chantier, retour de chasse/camping ou sable et boue abondants.',
       ua: 'Додатковий час та спеціальні розчини для авто після полювання, дачі або будівництва.',
       en: 'Extra deep treatment for construction vehicles, hunting/camping trips or deep mud.'
     }
@@ -598,16 +600,17 @@ export const EXTRA_SERVICES: ExtraDetailingService[] = [
     id: 'difficult_stains',
     name: {
       fr: 'Taches difficiles / Contamination organique',
-      ua: 'Складні плями / Органіка',
+      ua: 'Складні плями / Органічне забруднення',
       en: 'Tough stains / Organic spills'
     },
-    price: 20,
-    priceMax: 40,
-    unit: { fr: 'supplément (+20$ à 40$)', ua: 'доплата (+20$ до 40$)', en: 'add-on (+20$ to 40$)' },
+    price: 25,
+    priceMax: 25,
+    durationHours: 1,
+    unit: { fr: '+25 $ CAD par tache · +1 h par tache', ua: '+25 $ CAD за пляму · +1 год за пляму', en: '+25 $ CAD per stain · +1 h per stain' },
     iconName: 'Sparkles',
     category: 'stains',
     description: {
-      fr: 'Café incrusté, soda, graisse, vomissures, lait caillé, moisissure de surface traitées avec détachants enzymatiques.',
+      fr: 'Café incrusté, graisse, vomissures, lait caillé ou moisissure traités avec détachants enzymatiques.',
       ua: 'Виведення плям від кави, молока, жиру, їжі та розливів ензимними розчинниками.',
       en: 'Enzymatic treatment for coffee, milk, grease, food spills and organic contamination.'
     }
@@ -620,7 +623,9 @@ export const EXTRA_SERVICES: ExtraDetailingService[] = [
       en: 'Odor elimination treatment'
     },
     price: 35,
-    unit: { fr: 'à partir de 35 $', ua: 'від 35 $', en: 'from $35' },
+    priceMax: 35,
+    durationHours: 1,
+    unit: { fr: '+35 $ CAD par intervention · +1 h par intervention', ua: '+35 $ CAD за процедуру · +1 год за процедуру', en: '+35 $ CAD per intervention · +1 h per intervention' },
     iconName: 'Wind',
     category: 'special',
     description: {
@@ -632,16 +637,18 @@ export const EXTRA_SERVICES: ExtraDetailingService[] = [
   {
     id: 'child_seat',
     name: {
-      fr: 'Nettoyage & désinfection siège auto enfant',
-      ua: 'Хімчистка дитячого автокрісла',
+      fr: 'Nettoyage et désinfection d\'un siège d\'auto pour enfant',
+      ua: 'Хімчистка та дезінфекція дитячого автокрісла',
       en: 'Child safety seat deep wash & sanitize'
     },
-    price: 25,
-    unit: { fr: 'par siège (25 $)', ua: 'за крісло (25 $)', en: 'per seat ($25)' },
+    price: 30,
+    priceMax: 30,
+    durationHours: 0.5,
+    unit: { fr: '+30 $ CAD · +30 min', ua: '+30 $ CAD · +30 хв', en: '+30 $ CAD · +30 min' },
     iconName: 'Baby',
     category: 'furniture',
     description: {
-      fr: 'Désinfection hypoallergénique complète des sangles, tissus et mousse sans résidu toxique.',
+      fr: 'Désinfection hypoallergénique complète des sangles, tissus et mousse sans aucun résidu toxique.',
       ua: 'Гіпоалергенна дезінфекція ременів та тканини крісла без шкідливих залишків.',
       en: '100% hypoallergenic sanitization of straps, padding and covers safe for babies.'
     }
@@ -811,9 +818,9 @@ export const FAQ_DETAILING: DetailingFaqItem[] = [
       en: 'What are the vehicle detailing package rates?'
     },
     answer: {
-      fr: 'Nos 3 forfaits principaux sont : Express (Auto 99 $, VUS 119 $, Camionnette/Van 139 $), Complet avec extraction en profondeur (Auto 149 $, VUS 179 $, Camionnette/Van 209 $) et Remise à Neuf intensive (à partir de 199 $ Auto, 239 $ VUS, 269 $ Camionnette/Van). Des options ciblées sont disponibles (poils d\'animaux +20$ à 40$, traitement odeurs à partir de 35$).',
-      ua: 'Наші основні пакети: Експрес (Авто 99 $, VUS 119 $, Пікап/Вен 139 $), Повний з екстракцією сидінь (Авто 149 $, VUS 179 $, Пікап/Вен 209 $) та Реновація «Як новий» (від 199 $ Авто, 239 $ VUS, 269 $ Пікап/Вен).',
-      en: 'Our 3 main packages: Express (Car $99, SUV $119, Truck/Van $139), Complete with deep hot water extraction (Car $149, SUV $179, Truck/Van $209), and Deep Rejuvenation (from $199 Car, $239 SUV, $269 Truck/Van).'
+      fr: 'Nos 3 forfaits principaux sont : Express (Auto 99 $, VUS 139 $, Camionnette/Van 119 $), Complet avec extraction en profondeur (Auto 149 $, VUS 209 $, Camionnette/Van 179 $) et Remise à Neuf intensive (à partir de 199 $ Auto, 269 $ VUS, 239 $ Camionnette/Van). Des options ciblées sont disponibles (poils d\'animaux +20$ à 40$, traitement odeurs à partir de 35$).',
+      ua: 'Наші основні пакети: Експрес (Авто 99 $, VUS 139 $, Пікап/Вен 119 $), Повний з екстракцією сидінь (Авто 149 $, VUS 209 $, Пікап/Вен 179 $) та Реновація «Як новий» (від 199 $ Авто, 269 $ VUS, 239 $ Пікап/Вен).',
+      en: 'Our 3 main packages: Express (Car $99, SUV $139, Truck/Van $119), Complete with deep hot water extraction (Car $149, SUV $209, Truck/Van $179), and Deep Rejuvenation (from $199 Car, $269 SUV, $239 Truck/Van).'
     }
   },
   {
@@ -825,9 +832,9 @@ export const FAQ_DETAILING: DetailingFaqItem[] = [
       en: 'Do you also clean home furniture, couches, carpets and mattresses?'
     },
     answer: {
-      fr: 'Oui, absolument ! Nous sommes spécialisés dans le nettoyage par injection-extraction à l\'eau chaude des canapés, causeuses, chaises rembourrées, tapis décoratifs (à partir de 0,30 $/pi²), escaliers moquettés (5,30 $/marche) et matelas avec désinfection thermique contre les acariens et allergènes.',
-      ua: 'Так, звичайно! Ми спеціалізуємося на глибинній хімчистці диванів, крісел, стільців, килимів (від 0,30 $/кв. фут), килимових сходів (5,30 $/сходинка) та матраців з термодезінфекцією від пилових кліщів.',
-      en: 'Yes, absolutely! We specialize in hot water extraction for couches, armchairs, dining chairs, rugs (from $0.30/sq ft), stairs ($5.30/step) and mattresses with allergen sanitization.'
+      fr: 'Oui, absolument ! Nous sommes spécialisés dans le nettoyage par injection-extraction à l\'eau chaude des canapés, causeuses, chaises rembourrées, tapis décoratifs (à partir de 0,30 $/pi²), escaliers moquettés (6,00 $/marche) et matelas avec désinfection thermique contre les acariens et allergènes.',
+      ua: 'Так, звичайно! Ми спеціалізуємося на глибинній хімчистці диванів, крісел, стільців, килимів (від 0,30 $/кв. фут), килимових сходів (6,00 $/сходинка) та матраців з термодезінфекцією від пилових кліщів.',
+      en: 'Yes, absolutely! We specialize in hot water extraction for couches, armchairs, dining chairs, rugs (from $0.30/sq ft), stairs ($6.00/step) and mattresses with allergen sanitization.'
     }
   },
   {

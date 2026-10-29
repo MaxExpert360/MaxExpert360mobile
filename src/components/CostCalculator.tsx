@@ -21,7 +21,8 @@ import {
   Language, 
   VehicleCategory,
   BookingCart,
-  CartItem
+  CartItem,
+  ExtraDetailingService
 } from '../types';
 import { 
   DETAILING_PACKAGES, 
@@ -33,6 +34,7 @@ import {
   DYNASTIE_INFO 
 } from '../data/dynastieData';
 import { calculateCartSummary, openOfficialSquareBooking } from '../services/squareBookings';
+import { formatDurationLocalized } from '../utils/durationFormatter';
 import { 
   AUTO_LAUNCH_PROMO, 
   isAutoPromoActive, 
@@ -43,9 +45,61 @@ interface CostCalculatorProps {
   currentLang: Language;
   onOpenBookingWithDetails?: (state: AutoCalculatorState, estimatedPrice: number) => void;
   onOpenBookingWithCart?: (cart: BookingCart, state: AutoCalculatorState) => void;
-  onCartChange?: (cart: BookingCart) => void;
+  onCartChange?: (cart: BookingCart, state?: AutoCalculatorState) => void;
   activeCategoryTab?: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck';
   onCategoryTabChange?: (tab: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck') => void;
+  calcState?: AutoCalculatorState;
+  onCalcStateChange?: (state: AutoCalculatorState) => void;
+}
+
+// Pure calculation helper for detailing auto packages
+export function calculateAutoTotal(
+  category: string,
+  packageId: string,
+  selectedExtras: string[] = [],
+  extraQuantities: Record<string, number> = {}
+) {
+  const selectedPkg = DETAILING_PACKAGES.find(p => p.id === packageId) || DETAILING_PACKAGES[1];
+  const vehicleKey: 'auto' | 'suv' | 'truck_van' = (category === 'suv' || category === 'truck_van') ? category : 'auto';
+  const basePrice = selectedPkg.prices[vehicleKey] ?? selectedPkg.prices.auto;
+  const extrasList = selectedExtras
+    .map(extraId => EXTRA_SERVICES.find(e => e.id === extraId))
+    .filter(Boolean) as ExtraDetailingService[];
+
+  const extrasSum = extrasList.reduce((sum, extra) => {
+    const qty = Math.max(1, extraQuantities[extra.id] || 1);
+    return sum + (extra.price * qty);
+  }, 0);
+
+  const extraHours = extrasList.reduce((sum, extra) => {
+    const qty = Math.max(1, extraQuantities[extra.id] || 1);
+    return sum + ((extra.durationHours ?? 1) * qty);
+  }, 0);
+
+  const baseRange = selectedPkg.id === 'express'
+    ? { min: 1.5, max: 2 }
+    : selectedPkg.id === 'remise_a_neuf'
+    ? { min: 4, max: 6 }
+    : { min: 3, max: 4 };
+
+  const totalMin = baseRange.min + extraHours;
+  const totalMax = baseRange.max + extraHours;
+
+  return {
+    selectedPkg,
+    vehicleKey,
+    basePrice,
+    extrasSum,
+    extraHours,
+    extrasList,
+    totalPrice: basePrice + extrasSum,
+    durationHoursRange: { min: totalMin, max: totalMax },
+    duration: {
+      fr: formatDurationLocalized(totalMin, totalMax, 'fr'),
+      ua: formatDurationLocalized(totalMin, totalMax, 'ua'),
+      en: formatDurationLocalized(totalMin, totalMax, 'en')
+    }
+  };
 }
 
 export const CostCalculator: React.FC<CostCalculatorProps> = ({
@@ -54,7 +108,9 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
   onOpenBookingWithCart,
   onCartChange,
   activeCategoryTab,
-  onCategoryTabChange
+  onCategoryTabChange,
+  calcState: propCalcState,
+  onCalcStateChange
 }) => {
   const [internalActiveTab, setInternalActiveTab] = useState<'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck'>('auto');
   const activeTab = activeCategoryTab || internalActiveTab;
@@ -66,15 +122,27 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
     }
   };
 
-  // Auto state
-  const [calcState, setCalcState] = useState<AutoCalculatorState>({
+  // Auto state (internal or controlled via props)
+  const [internalCalcState, setInternalCalcState] = useState<AutoCalculatorState>({
     vehicleCategory: 'suv',
-    packageId: 'interieur_exterieur_complet',
+    packageId: 'complet',
     feetLength: 22,
-    selectedExtras: ['poils_animaux'],
+    selectedExtras: [],
+    extraQuantities: {},
     serviceLocation: 'mobile',
     frequencyDiscount: 'once'
   });
+
+  const calcState = propCalcState || internalCalcState;
+
+  const setCalcState = (updater: (prev: AutoCalculatorState) => AutoCalculatorState) => {
+    if (onCalcStateChange) {
+      const next = updater(calcState);
+      onCalcStateChange(next);
+    } else {
+      setInternalCalcState(updater);
+    }
+  };
 
   // Residential state
   const [selectedFurniture, setSelectedFurniture] = useState<{ [id: string]: number }>({
@@ -91,7 +159,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
     fr: {
       eyebrow: 'Transparence Totale & Prix Immédiat',
       title: 'Calculateur de Soumission en Ligne',
-      subtitle: 'Sélectionnez ce que vous souhaitez faire nettoyer (Auto, Sofa, Tapis, Matelas ou Camion) pour obtenir une estimation instantanée.',
+      subtitle: 'Sélectionnez ce que vous souhaitez faire nettoyer pour obtenir une estimation instantanée.',
       tabAuto: '🚗 Auto',
       tabFurniture: '🛋️ Sofa',
       tabCarpet: '🟫 Tapis',
@@ -99,19 +167,23 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       tabTruck: '🚛 Camion',
       step1Auto: '1. Catégorie de véhicule',
       step2Auto: '2. Choix du forfait',
-      step3Extras: 'Options & Suppléments éventuels',
+      step3Extras: 'Options et suppléments',
       catAuto: 'Auto / Berline',
       catSuv: 'VUS / SUV',
       catTruckVan: 'Camionnette / Van',
       carpetSlider: 'Superficie du tapis (pi²) à 0,30 $/pi² :',
-      stairsLabel: "Marches d'escalier moquettées (5,30 $ / marche) :",
-      summaryTitle: 'Votre Estimation Instantanée',
-      basePackage: 'Prestation principale',
-      extrasLabel: 'Options ajoutées',
-      totalEstimated: 'Total estimé :',
-      estimatedTime: 'Durée indicative :',
-      btnBookThis: 'Réserver maintenant',
-      minNotice: 'Déplacement à Drummondville inclus • Sans frais cachés ni acompte',
+      stairsLabel: "Marches d'escalier moquettées (6,00 $ / marche - marches et contremarches) :",
+      summaryTitle: 'Votre estimation instantanée',
+      selectedPackageLabel: 'Forfait sélectionné',
+      packagePriceLabel: 'Prix du forfait',
+      selectedOptionsLabel: 'Options sélectionnées',
+      noOptionsLabel: 'Aucune option sélectionnée',
+      totalEstimated: 'Prix total estimé :',
+      estimatedTime: 'Durée totale estimée :',
+      btnBookThis: 'Réserver un rendez-vous',
+      btnQuote: 'Obtenir une soumission',
+      btnModify: 'Modifier ma sélection',
+      minNotice: 'Déplacement local inclus à Drummondville • Sans acompte',
       disclaimer: 'Paiement sans surprise après l\'inspection de votre satisfaction. Produits 100% écologiques.'
     },
     ua: {
@@ -130,13 +202,17 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       catSuv: 'Кросовер / VUS',
       catTruckVan: 'Пікап / Вен',
       carpetSlider: 'Площа килима (кв.фути) по 0,30 $/кв.ф :',
-      stairsLabel: 'Килимові сходинки (5,30 $ за сходинку) :',
+      stairsLabel: 'Килимові сходинки (6,00 $ за сходинку - сходинки та підсходинки) :',
       summaryTitle: 'Ваш Розрахунок Вартості',
-      basePackage: 'Основна послуга',
-      extrasLabel: 'Додаткові опції',
+      selectedPackageLabel: 'Обраний пакет',
+      packagePriceLabel: 'Вартість пакета',
+      selectedOptionsLabel: 'Обрані опції',
+      noOptionsLabel: 'Опції не обрано',
       totalEstimated: 'Разом до сплати :',
       estimatedTime: 'Орієнтовний час :',
       btnBookThis: 'Забронювати замовлення',
+      btnQuote: 'Отримати кошторис',
+      btnModify: 'Змінити вибір',
       minNotice: 'Виїзд по Драммондвілю включено • Без передплати та прихованих доплат',
       disclaimer: 'Оплата після перевірки результату. 100% екологічні та безпечні засоби.'
     },
@@ -151,18 +227,22 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       tabTruck: '🚛 Truck',
       step1Auto: '1. Vehicle Category',
       step2Auto: '2. Choose Package',
-      step3Extras: 'Optional Add-ons & Surcharges',
+      step3Extras: 'Options and Add-ons',
       catAuto: 'Car / Sedan',
       catSuv: 'SUV / Crossover',
       catTruckVan: 'Truck / Van',
       carpetSlider: 'Carpet area (sq.ft) at $0.30/sq.ft :',
-      stairsLabel: 'Carpeted stairs ($5.30 / step) :',
+      stairsLabel: 'Carpeted stairs ($6.00 / step - steps and risers) :',
       summaryTitle: 'Your Instant Estimate',
-      basePackage: 'Main Service',
-      extrasLabel: 'Selected add-ons',
-      totalEstimated: 'Total Estimate :',
-      estimatedTime: 'Estimated time :',
-      btnBookThis: 'Book this service',
+      selectedPackageLabel: 'Selected Package',
+      packagePriceLabel: 'Package Price',
+      selectedOptionsLabel: 'Selected Options',
+      noOptionsLabel: 'No options selected',
+      totalEstimated: 'Estimated Total :',
+      estimatedTime: 'Estimated Total Duration :',
+      btnBookThis: 'Book an Appointment',
+      btnQuote: 'Get an Instant Quote',
+      btnModify: 'Modify Selection',
       minNotice: 'Local travel included in Drummondville • No deposit required',
       disclaimer: 'Payment upon satisfaction inspection. 100% eco-friendly and pet-safe products.'
     }
@@ -175,19 +255,20 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
     let duration = '2 - 3 h';
     let extrasSum = 0;
 
-    if (activeTab === 'auto') {
-      const selectedPkg = DETAILING_PACKAGES.find(p => p.id === calcState.packageId) || DETAILING_PACKAGES[1];
-      mainName = selectedPkg.title[currentLang];
-      const vehicleKey = calcState.vehicleCategory as 'auto' | 'suv' | 'truck_van';
-      const rawPrice = selectedPkg.prices[vehicleKey] || selectedPkg.prices.auto;
-      const priceInfo = calculateServicePrice(rawPrice, calcState.vehicleCategory);
-      basePrice = priceInfo.finalPrice;
-      duration = selectedPkg.duration[currentLang];
+    let selectedExtrasList: ExtraDetailingService[] = [];
 
-      extrasSum = calcState.selectedExtras.reduce((sum, extraId) => {
-        const extra = EXTRA_SERVICES.find(e => e.id === extraId);
-        return sum + (extra ? extra.price : 0);
-      }, 0);
+    if (activeTab === 'auto') {
+      const autoData = calculateAutoTotal(
+        calcState.vehicleCategory,
+        calcState.packageId,
+        calcState.selectedExtras,
+        calcState.extraQuantities || {}
+      );
+      mainName = autoData.selectedPkg.title[currentLang];
+      basePrice = autoData.basePrice;
+      duration = autoData.duration[currentLang];
+      extrasSum = autoData.extrasSum;
+      selectedExtrasList = autoData.extrasList;
     } else if (activeTab === 'furniture') {
       mainName = currentLang === 'fr' ? 'Nettoyage Meubles Rembourrés' : currentLang === 'ua' ? 'Хімчистка мʼяких меблів' : 'Upholstered Furniture Cleaning';
       basePrice = Object.entries(selectedFurniture).reduce((sum, [id, qty]) => {
@@ -195,13 +276,13 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
         const quantity = Number(qty) || 0;
         return sum + (item ? item.price * quantity : 0);
       }, 0);
-      duration = '1.5 - 3 h';
+      duration = currentLang === 'fr' ? '1 h 30 min à 3 h' : '1.5 - 3 h';
     } else if (activeTab === 'carpet') {
       mainName = currentLang === 'fr' ? 'Nettoyage Tapis & Escaliers' : currentLang === 'ua' ? 'Хімчистка килимів та сходів' : 'Carpet & Stairs Deep Extraction';
       const carpetCost = Math.round(carpetSqFt * 0.30 * 100) / 100;
-      const stairsCost = Math.round(carpetStairsCount * 5.30 * 100) / 100;
+      const stairsCost = Math.round(carpetStairsCount * 6.00 * 100) / 100;
       basePrice = Math.round((carpetCost + stairsCost) * 100) / 100;
-      duration = '1 - 2.5 h';
+      duration = currentLang === 'fr' ? '1 h à 2 h 30 min' : '1 - 2.5 h';
     } else if (activeTab === 'mattress') {
       mainName = currentLang === 'fr' ? 'Désinfection & Nettoyage Matelas' : currentLang === 'ua' ? 'Хімчистка та дезінфекція матраців' : 'Mattress Deep Sanitization';
       basePrice = Object.entries(selectedMattress).reduce((sum, [id, qty]) => {
@@ -209,12 +290,12 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
         const quantity = Number(qty) || 0;
         return sum + (item ? item.price * quantity : 0);
       }, 0);
-      duration = '1 - 2 h';
+      duration = currentLang === 'fr' ? '1 h à 2 h' : '1 - 2 h';
     } else if (activeTab === 'truck') {
       const truckItem = TRUCK_RV_SERVICES.find(t => t.id === selectedTruckId) || TRUCK_RV_SERVICES[0];
       mainName = truckItem.name[currentLang];
       basePrice = truckItem.id === 'truck_sleeper' ? 220 : truckItem.id === 'truck_daycab' ? 140 : 180;
-      duration = '2.5 - 4 h';
+      duration = currentLang === 'fr' ? '2 h 30 min à 4 h' : '2.5 - 4 h';
     }
 
     const calculatedTotal = basePrice + extrasSum;
@@ -225,6 +306,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
       mainName,
       basePrice,
       extrasSum,
+      selectedExtrasList,
       calculatedTotal,
       finalDisplayTotal,
       hasMinApplied,
@@ -237,42 +319,44 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
     const items: CartItem[] = [];
 
     if (activeTab === 'auto') {
-      const selectedPkg = DETAILING_PACKAGES.find(p => p.id === calcState.packageId) || DETAILING_PACKAGES[1];
-      const vehicleKey = calcState.vehicleCategory as 'auto' | 'suv' | 'truck_van';
+      const autoData = calculateAutoTotal(
+        calcState.vehicleCategory,
+        calcState.packageId,
+        calcState.selectedExtras,
+        calcState.extraQuantities || {}
+      );
       const catLabel = {
         fr: calcState.vehicleCategory === 'auto' ? 'Auto / Berline' : calcState.vehicleCategory === 'suv' ? 'VUS / SUV' : 'Camionnette / Van',
         ua: calcState.vehicleCategory === 'auto' ? 'Легкове авто / Седан' : calcState.vehicleCategory === 'suv' ? 'Кросовер / VUS' : 'Пікап / Вен',
         en: calcState.vehicleCategory === 'auto' ? 'Car / Sedan' : calcState.vehicleCategory === 'suv' ? 'SUV / Crossover' : 'Truck / Van'
       };
-      const rawPrice = selectedPkg.prices[vehicleKey] || selectedPkg.prices.auto;
-      const priceInfo = calculateServicePrice(rawPrice, calcState.vehicleCategory);
-      const pkgPrice = priceInfo.finalPrice;
 
       items.push({
-        id: `${selectedPkg.id}_${calcState.vehicleCategory}`,
+        id: `${autoData.selectedPkg.id}_${calcState.vehicleCategory}`,
         category: 'auto',
-        name: selectedPkg.title,
+        name: autoData.selectedPkg.title,
         details: catLabel,
         quantity: 1,
-        unitPrice: pkgPrice,
-        totalPrice: pkgPrice
+        unitPrice: autoData.basePrice,
+        totalPrice: autoData.basePrice
       });
 
       calcState.selectedExtras.forEach(extraId => {
         const extra = EXTRA_SERVICES.find(e => e.id === extraId);
         if (extra) {
+          const qty = Math.max(1, calcState.extraQuantities?.[extra.id] || 1);
           items.push({
             id: extra.id,
             category: 'extra',
             name: extra.name,
             details: {
-              fr: 'Option supplémentaire',
-              ua: 'Додаткова опція',
-              en: 'Add-on option'
+              fr: extra.unit.fr,
+              ua: extra.unit.ua,
+              en: extra.unit.en
             },
-            quantity: 1,
+            quantity: qty,
             unitPrice: extra.price,
-            totalPrice: extra.price
+            totalPrice: extra.price * qty
           });
         }
       });
@@ -320,7 +404,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
         });
       }
       if (carpetStairsCount > 0) {
-        const stairsTotal = Math.round(carpetStairsCount * 5.30 * 100) / 100;
+        const stairsTotal = Math.round(carpetStairsCount * 6.00 * 100) / 100;
         items.push({
           id: 'carpet_stairs',
           category: 'carpet',
@@ -330,12 +414,12 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
             en: 'Carpeted stairs (steps)'
           },
           details: {
-            fr: `${carpetStairsCount} marche(s) à 5,30 $/marche`,
-            ua: `${carpetStairsCount} сходинок(ки) по 5,30 $/сходинка`,
-            en: `${carpetStairsCount} step(s) at $5.30/step`
+            fr: `${carpetStairsCount} marche(s) à 6,00 $/marche (marches et contremarches)`,
+            ua: `${carpetStairsCount} сходинок(ки) по 6,00 $/сходинка (сходинки та підсходинки)`,
+            en: `${carpetStairsCount} step(s) at $6.00/step (steps and risers)`
           },
           quantity: carpetStairsCount,
-          unitPrice: 5.30,
+          unitPrice: 6.00,
           totalPrice: stairsTotal
         });
       }
@@ -381,20 +465,37 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
   // Keep parent cart state in sync
   React.useEffect(() => {
     if (onCartChange) {
-      onCartChange(currentCart);
+      onCartChange(currentCart, calcState);
     }
-  }, [currentCart, onCartChange]);
+  }, [currentCart, calcState, onCartChange]);
 
   const handleToggleExtra = (extraId: string) => {
     setCalcState(prev => {
       const exists = prev.selectedExtras.includes(extraId);
+      const nextExtras = exists 
+        ? prev.selectedExtras.filter(id => id !== extraId)
+        : [...prev.selectedExtras, extraId];
+      const nextQuantities = { ...(prev.extraQuantities || {}) };
+      if (!exists && !nextQuantities[extraId]) {
+        nextQuantities[extraId] = 1;
+      }
       return {
         ...prev,
-        selectedExtras: exists 
-          ? prev.selectedExtras.filter(id => id !== extraId)
-          : [...prev.selectedExtras, extraId]
+        selectedExtras: nextExtras,
+        extraQuantities: nextQuantities
       };
     });
+  };
+
+  const handleUpdateExtraQuantity = (extraId: string, quantity: number) => {
+    const cleanQty = Math.max(1, quantity);
+    setCalcState(prev => ({
+      ...prev,
+      extraQuantities: {
+        ...(prev.extraQuantities || {}),
+        [extraId]: cleanQty
+      }
+    }));
   };
 
   const handleBook = () => {
@@ -528,7 +629,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                     >
                       <span className="text-2xl block mb-1">🚗</span>
                       <span className="text-xs font-black block leading-tight text-[#0D2818]">{t.catAuto}</span>
-                      <span className="text-[10px] font-mono text-[#16A34A] block mt-1 font-bold">dès 99 $</span>
+                      <span className="text-[10px] font-mono text-[#16A34A] block mt-1 font-bold">dès 99 $ CAD</span>
                     </button>
                     <button
                       type="button"
@@ -541,7 +642,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                     >
                       <span className="text-2xl block mb-1">🚙</span>
                       <span className="text-xs font-black block leading-tight text-[#0D2818]">{t.catSuv}</span>
-                      <span className="text-[10px] font-mono text-[#16A34A] block mt-1 font-bold">dès 119 $</span>
+                      <span className="text-[10px] font-mono text-[#16A34A] block mt-1 font-bold">dès 139 $ CAD</span>
                     </button>
                     <button
                       type="button"
@@ -554,7 +655,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                     >
                       <span className="text-2xl block mb-1">🛻</span>
                       <span className="text-xs font-black block leading-tight text-[#0D2818]">{t.catTruckVan}</span>
-                      <span className="text-[10px] font-mono text-[#16A34A] block mt-1 font-bold">dès 139 $</span>
+                      <span className="text-[10px] font-mono text-[#16A34A] block mt-1 font-bold">dès 119 $ CAD</span>
                     </button>
                   </div>
                 </div>
@@ -591,7 +692,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                             <span className="text-[11px] text-[#4F7A64] block mt-0.5">{pkg.tagline[currentLang]}</span>
                           </div>
                           <span className="font-mono font-black text-sm text-[#15803D] shrink-0 bg-white px-2.5 py-1 rounded border border-[#BEE7CB]">
-                            {price} $
+                            {price} $ CAD
                           </span>
                         </button>
                       );
@@ -608,27 +709,91 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {EXTRA_SERVICES.map((extra) => {
                       const isChecked = calcState.selectedExtras.includes(extra.id);
+                      const isUnitBased = extra.id === 'difficult_stains' || extra.id === 'odor_treatment';
+                      const qty = Math.max(1, calcState.extraQuantities?.[extra.id] || 1);
+                      const totalExtraPrice = extra.price * qty;
+                      const totalExtraHours = (extra.durationHours ?? 1) * qty;
+
                       return (
-                        <button
+                        <div
                           key={extra.id}
-                          type="button"
-                          onClick={() => handleToggleExtra(extra.id)}
-                          className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                          className={`p-3 rounded-xl border text-left transition-all ${
                             isChecked
-                              ? 'bg-[#EAF6EE] border-[#16A34A] text-[#0D2818]'
-                              : 'bg-white border-[#D5EAD9] text-[#3E6552]'
+                              ? 'bg-[#EAF6EE] border-[#16A34A] text-[#0D2818] shadow-xs ring-1 ring-[#16A34A]'
+                              : 'bg-white border-[#D5EAD9] text-[#3E6552] hover:border-[#16A34A]'
                           }`}
                         >
-                          <div className="flex items-center gap-2">
-                            <div className={`w-4 h-4 rounded flex items-center justify-center ${
-                              isChecked ? 'bg-[#16A34A] text-white' : 'border border-[#C6ECCF]'
-                            }`}>
-                              {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                          <div 
+                            role="checkbox"
+                            aria-checked={isChecked}
+                            tabIndex={0}
+                            onClick={() => handleToggleExtra(extra.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === ' ' || e.key === 'Enter') {
+                                e.preventDefault();
+                                handleToggleExtra(extra.id);
+                              }
+                            }}
+                            className="flex items-start justify-between gap-2.5 cursor-pointer select-none"
+                          >
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 transition-colors ${
+                                isChecked ? 'bg-[#16A34A] text-white' : 'border border-[#C6ECCF] bg-white'
+                              }`}>
+                                {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+                              <div>
+                                <span className="text-xs font-bold text-[#0D2818] leading-snug block">
+                                  {extra.name[currentLang]}
+                                </span>
+                                <span className="text-[11px] font-mono font-bold text-[#15803D] block mt-0.5">
+                                  {extra.unit[currentLang]}
+                                </span>
+                              </div>
                             </div>
-                            <span className="text-xs font-bold text-[#0D2818]">{extra.name[currentLang]}</span>
                           </div>
-                          <span className="text-xs font-mono text-[#15803D] font-bold">+{extra.price} $</span>
-                        </button>
+
+                          {/* Stepper for unit-based items when checked */}
+                          {isChecked && isUnitBased && (
+                            <div className="mt-2.5 pt-2 border-t border-[#BEE7CB] flex items-center justify-between text-xs">
+                              <span className="font-bold text-[#0D2818] text-[11px]">
+                                {extra.id === 'difficult_stains' 
+                                  ? (currentLang === 'fr' ? 'Nombre de taches :' : currentLang === 'ua' ? 'Кількість плям :' : 'Number of stains :')
+                                  : (currentLang === 'fr' ? "Nombre d'interventions :" : currentLang === 'ua' ? 'Кількість процедур :' : 'Number of treatments :')}
+                              </span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUpdateExtraQuantity(extra.id, qty - 1);
+                                  }}
+                                  className="w-6 h-6 rounded bg-white border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer"
+                                  aria-label="Diminuer"
+                                >
+                                  -
+                                </button>
+                                <span className="font-mono font-bold text-xs text-[#0D2818] min-w-[20px] text-center">
+                                  {qty}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUpdateExtraQuantity(extra.id, qty + 1);
+                                  }}
+                                  className="w-6 h-6 rounded bg-white border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer"
+                                  aria-label="Augmenter"
+                                >
+                                  +
+                                </button>
+                                <span className="font-mono font-bold text-[#15803D] text-[11px] ml-1 bg-white px-1.5 py-0.5 rounded border border-[#BEE7CB]">
+                                  +{totalExtraPrice} $ · +{totalExtraHours} h
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -737,7 +902,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                     </button>
                     {carpetStairsCount > 0 && (
                       <span className="text-xs font-mono font-bold text-[#15803D] bg-white px-2 py-1 rounded border border-[#BEE7CB] ml-1">
-                        {(carpetStairsCount * 5.30).toFixed(2)} $
+                        {(carpetStairsCount * 6.00).toFixed(2)} $
                       </span>
                     )}
                   </div>
@@ -843,23 +1008,62 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-3 text-xs">
-                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-[#D5EAD9]">
-                  <span className="text-[#3E6552]">{t.basePackage} :</span>
-                  <span className="text-[#0D2818] font-bold text-right">{calculation.mainName}</span>
-                </div>
-
-                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-[#D5EAD9]">
-                  <span className="text-[#3E6552]">{t.estimatedTime}</span>
-                  <span className="text-[#15803D] font-mono font-bold">{calculation.duration}</span>
-                </div>
-
-                {calculation.extrasSum > 0 && (
-                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-[#D5EAD9]">
-                    <span className="text-[#3E6552]">{t.extrasLabel} :</span>
-                    <span className="text-[#15803D] font-mono font-bold">+{calculation.extrasSum} $</span>
+              <div className="space-y-2.5 text-xs">
+                {/* Forfait sélectionné */}
+                <div className="p-3 rounded-xl bg-white border border-[#D5EAD9] space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#3E6552] font-semibold">{t.selectedPackageLabel} :</span>
+                    <span className="text-[#0D2818] font-bold text-right">{calculation.mainName}</span>
                   </div>
-                )}
+                  <div className="flex items-center justify-between pt-1 border-t border-[#F0F7F2] text-[11px]">
+                    <span className="text-[#648B75]">{t.packagePriceLabel} :</span>
+                    <span className="font-mono font-bold text-[#15803D]">{calculation.basePrice} $ CAD</span>
+                  </div>
+                </div>
+
+                {/* Options sélectionnées */}
+                <div className="p-3 rounded-xl bg-white border border-[#D5EAD9] space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#3E6552] font-semibold">{t.selectedOptionsLabel} :</span>
+                    {calculation.extrasSum > 0 ? (
+                      <span className="font-mono font-bold text-[#15803D]">+{calculation.extrasSum} $ CAD</span>
+                    ) : (
+                      <span className="text-[11px] text-[#648B75] italic">{t.noOptionsLabel}</span>
+                    )}
+                  </div>
+                  {calculation.selectedExtrasList && calculation.selectedExtrasList.length > 0 && (
+                    <ul className="space-y-1.5 pt-1.5 border-t border-[#F0F7F2]">
+                      {calculation.selectedExtrasList.map(opt => {
+                        const qty = Math.max(1, calcState.extraQuantities?.[opt.id] || 1);
+                        const itemTotalPrice = opt.price * qty;
+                        const itemTotalHours = (opt.durationHours ?? 1) * qty;
+                        const durBadge = opt.durationHours === 0.5 
+                          ? (qty === 1 ? '+30 min' : `+${itemTotalHours} h`)
+                          : `+${itemTotalHours} h`;
+                        const unitName = opt.id === 'difficult_stains'
+                          ? (qty > 1 ? ` (${qty} taches)` : ' (1 tache)')
+                          : opt.id === 'odor_treatment'
+                          ? (qty > 1 ? ` (${qty} interventions)` : ' (1 intervention)')
+                          : (qty > 1 ? ` (${qty}x)` : '');
+
+                        return (
+                          <li key={opt.id} className="flex items-center justify-between text-[11px] text-[#0D2818]">
+                            <span className="truncate pr-2 font-medium">• {opt.name[currentLang]}{unitName} :</span>
+                            <span className="font-mono text-[#15803D] font-bold shrink-0">
+                              +{itemTotalPrice} $ CAD <span className="text-[#648B75] font-normal">({durBadge})</span>
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Durée totale estimée */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-[#D5EAD9]">
+                  <span className="text-[#3E6552] font-semibold">{t.estimatedTime}</span>
+                  <span className="text-[#15803D] font-mono font-bold text-sm">{calculation.duration}</span>
+                </div>
               </div>
 
               {/* Total display */}
@@ -873,7 +1077,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                       ? (calculation.finalDisplayTotal % 1 === 0
                           ? calculation.finalDisplayTotal
                           : calculation.finalDisplayTotal.toFixed(2))
-                      : calculation.finalDisplayTotal} $
+                      : calculation.finalDisplayTotal} $ CAD
                   </span>
                   <span className="text-[10px] text-[#3E6552] block font-mono">
                     CAD • Déplacement local inclus

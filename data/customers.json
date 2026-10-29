@@ -57,6 +57,16 @@
     "squareCustomerId": "N3CTH0EVW58RFHV6WSSQV7PZ9M",
     "bookingHistory": [
       {
+        "bookingId": "lgox0u2yrdw7hi",
+        "date": "2026-10-26",
+        "servicesSummary": "Intérieur + Extérieur Complet",
+        "totalPrice": 209,
+        "status": "booked",
+        "createdAt": "2026-10-24T22:57:24.576Z",
+        "squareCustomerId": "QS84H4QMK6RFYAXTWXRW826YPR",
+        "photos": []
+      },
+      {
         "bookingId": "jypn7totwvn1jb",
         "date": "2026-10-12",
         "servicesSummary": "Intérieur + Extérieur Complet",
@@ -137,8 +147,8 @@
     "loyaltyRewardBalance": 0,
     "unlockedRewards": [],
     "createdAt": "2026-09-03T02:19:55.187Z",
-    "updatedAt": "2026-10-06T20:43:53.567Z",
-    "lastBookingDate": "2026-10-12"
+    "updatedAt": "2026-10-24T22:57:24.576Z",
+    "lastBookingDate": "2026-10-26"
   },
   {
     "id": "cust_1791317815420_hlc14",

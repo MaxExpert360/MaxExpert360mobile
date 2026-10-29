@@ -13,6 +13,7 @@ export interface ExtraDetailingService {
   };
   price: number;
   priceMax?: number;
+  durationHours?: number;
   unit: {
     fr: string;
     ua: string;
@@ -214,6 +215,7 @@ export interface AutoCalculatorState {
   feetLength?: number;
   carpetSqFt?: number;
   selectedExtras: string[];
+  extraQuantities?: Record<string, number>;
   serviceLocation: 'mobile' | 'workshop';
   frequencyDiscount?: string;
 }
@@ -253,6 +255,7 @@ export interface AutoBookingFormData {
   packageId: string;
   feetLength?: number;
   selectedExtras: string[];
+  extraQuantities?: Record<string, number>;
   serviceLocation: 'mobile' | 'workshop';
   serviceAddress: string;
   address?: string;

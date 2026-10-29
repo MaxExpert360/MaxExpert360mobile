@@ -42,7 +42,7 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
     squareVariationId: 'TWMM6URGJYEC7TLITDWXGXRU',
     serviceName: 'Intérieur + Extérieur Express (VUS / SUV)',
     durationMinutes: 105,
-    priceCents: 11900,
+    priceCents: 13900,
     category: 'auto'
   },
   'express_truck_van': {
@@ -51,7 +51,7 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
     squareVariationId: 'B5CBFD6PC53ZAV47QDOJFD6N',
     serviceName: 'Intérieur + Extérieur Express (Camionnette / Van)',
     durationMinutes: 120,
-    priceCents: 13900,
+    priceCents: 11900,
     category: 'auto'
   },
   'interieur_exterieur_complet_auto': {
@@ -69,7 +69,7 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
     squareVariationId: 'UDZ4SIUF4K6QV4BPWMKIGX35',
     serviceName: 'Intérieur + Extérieur Complet (VUS / SUV)',
     durationMinutes: 180,
-    priceCents: 17900,
+    priceCents: 20900,
     category: 'auto'
   },
   'interieur_exterieur_complet_truck_van': {
@@ -78,7 +78,34 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
     squareVariationId: 'KZL6U2U75JJOWTGJTWO5IEDX',
     serviceName: 'Intérieur + Extérieur Complet (Camionnette / Van)',
     durationMinutes: 210,
+    priceCents: 17900,
+    category: 'auto'
+  },
+  'complet_auto': {
+    serviceId: 'complet_auto',
+    defaultVariationId: '342W7MSVZOPPNMQAMPZIXAPK',
+    squareVariationId: '342W7MSVZOPPNMQAMPZIXAPK',
+    serviceName: 'Intérieur + Extérieur Complet (Auto / Berline)',
+    durationMinutes: 150,
+    priceCents: 14900,
+    category: 'auto'
+  },
+  'complet_suv': {
+    serviceId: 'complet_suv',
+    defaultVariationId: 'UDZ4SIUF4K6QV4BPWMKIGX35',
+    squareVariationId: 'UDZ4SIUF4K6QV4BPWMKIGX35',
+    serviceName: 'Intérieur + Extérieur Complet (VUS / SUV)',
+    durationMinutes: 180,
     priceCents: 20900,
+    category: 'auto'
+  },
+  'complet_truck_van': {
+    serviceId: 'complet_truck_van',
+    defaultVariationId: 'KZL6U2U75JJOWTGJTWO5IEDX',
+    squareVariationId: 'KZL6U2U75JJOWTGJTWO5IEDX',
+    serviceName: 'Intérieur + Extérieur Complet (Camionnette / Van)',
+    durationMinutes: 210,
+    priceCents: 17900,
     category: 'auto'
   },
   'remise_a_neuf_auto': {
@@ -96,7 +123,7 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
     squareVariationId: 'VJVKHA5UNYFOMJ2HZKTJBS67',
     serviceName: 'Remise à Neuf Suprême (VUS / SUV)',
     durationMinutes: 270,
-    priceCents: 23900,
+    priceCents: 26900,
     category: 'auto'
   },
   'remise_a_neuf_truck_van': {
@@ -105,7 +132,7 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
     squareVariationId: 'V2NQ5MWCRVCF34LNP36Z7WQF',
     serviceName: 'Remise à Neuf Suprême (Camionnette / Van)',
     durationMinutes: 300,
-    priceCents: 26900,
+    priceCents: 23900,
     category: 'auto'
   },
 
@@ -229,7 +256,7 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
     defaultVariationId: 'VAR_ESCALIER_MARCHE',
     serviceName: "Nettoyage Marches d'escalier moquette (par marche)",
     durationMinutes: 45,
-    priceCents: 530,
+    priceCents: 600,
     category: 'carpet'
   },
   'escalier_complet': {
@@ -237,7 +264,7 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
     defaultVariationId: 'VAR_ESCALIER_MARCHE',
     serviceName: "Nettoyage Marches d'escalier moquette (par marche)",
     durationMinutes: 45,
-    priceCents: 530,
+    priceCents: 600,
     category: 'carpet'
   },
   'tapis_petit': {
@@ -269,7 +296,7 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
     defaultVariationId: 'VAR_ESCALIER_MARCHE',
     serviceName: "Nettoyage Marches d'escalier moquette",
     durationMinutes: 45,
-    priceCents: 530,
+    priceCents: 600,
     category: 'carpet'
   },
 

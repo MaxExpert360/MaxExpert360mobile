@@ -170,7 +170,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     vehicleCategory: initialState?.vehicleCategory || 'suv',
     vehicleMakeModel: '',
     vehicleYear: new Date().getFullYear().toString(),
-    packageId: initialState?.packageId || 'interieur_exterieur_complet',
+    packageId: initialState?.packageId || 'complet',
     feetLength: initialState?.feetLength || 22,
     selectedExtras: initialState?.selectedExtras || [],
     serviceLocation: 'mobile',
@@ -265,9 +265,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   }, [isOpen]);
 
-  // Sync cart and formData when modal opens
+  // Sync cart and formData ONLY when modal opens (not on subsequent internal cart updates)
+  const wasOpenRef = useRef(false);
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !wasOpenRef.current) {
       if (initialCart && initialCart.items.length > 0) {
         setCart(initialCart);
       }
@@ -279,6 +280,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           feetLength: initialState.feetLength || prev.feetLength,
           selectedExtras: initialState.selectedExtras || prev.selectedExtras
         }));
+
+        const isDefaultCatLabel = !vehicleMakeModelInput.trim() || 
+          vehicleMakeModelInput === 'Auto / Berline' || 
+          vehicleMakeModelInput === 'VUS / SUV' || 
+          vehicleMakeModelInput === 'Camionnette / Van' ||
+          vehicleMakeModelInput === 'Легкове авто / Седан' ||
+          vehicleMakeModelInput === 'Кросовер / VUS' ||
+          vehicleMakeModelInput === 'Пікап / Вен';
+
+        if (isDefaultCatLabel) {
+          const defaultCatLabel = initialState.vehicleCategory === 'suv' 
+            ? 'VUS / SUV' 
+            : initialState.vehicleCategory === 'truck_van' 
+            ? 'Camionnette / Van' 
+            : 'Auto / Berline';
+          setVehicleMakeModelInput(defaultCatLabel);
+        }
       }
       setStep(1);
       setIsSubmitting(false);
@@ -287,6 +305,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setBookingResult(null);
       setCopiedToast(false);
     }
+    wasOpenRef.current = isOpen;
   }, [isOpen, initialCart, initialState]);
 
   const triggerValidation = (fieldKey: string, elementId: string, message: string) => {
@@ -748,7 +767,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   // ================= STEP VALIDATION RULES =================
   const validateStep = (currentStepNumber: 1 | 2 | 3 | 4): boolean => {
-    // Step 1: Phone & SMS verification
+    // Step 1: Phone number
     if (currentStepNumber === 1) {
       if (!phoneInput.trim()) {
         triggerValidation('phone', 'booking-field-phone', 'Veuillez entrer votre numéro de téléphone.');
@@ -761,10 +780,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         return false;
       }
 
-      if (!isPhoneVerified) {
-        triggerValidation('smsCode', 'booking-field-code', 'Veuillez vérifier votre numéro de téléphone avec le code SMS avant de continuer.');
-        return false;
-      }
+      setFormData(prev => ({
+        ...prev,
+        clientPhone: phoneCheck.e164
+      }));
     }
 
     // Step 2: Name / Email & Address / Postal Code
@@ -774,25 +793,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         return false;
       }
 
-      if (!addressInput.trim()) {
+      if (!addressInput.trim() || addressInput.trim().length < 3) {
         triggerValidation('serviceAddress', 'booking-field-address', 'Veuillez entrer votre adresse de service à domicile.');
         return false;
       }
 
-      // Check if address was confirmed via Google Place selection
-      const hasPlaceId = Boolean(formData.placeId?.trim() || selectedAddressDetails?.placeId?.trim());
-      const hasFormattedAddress = Boolean(formData.formattedAddress?.trim() || selectedAddressDetails?.formattedAddress?.trim() || formData.address?.trim());
-      const isValidated = Boolean(formData.addressValidated && isAddressConfirmed && hasPlaceId && hasFormattedAddress);
-
-      if (!isValidated) {
-        triggerValidation('serviceAddress', 'booking-field-address', 'Veuillez sélectionner votre adresse dans les suggestions Google.');
-        return false;
-      }
-
-      // Postal code validation: MUST accept valid Canadian postal code (A1A 1A1)
+      // Postal code validation: accept valid Canadian postal code (A1A 1A1)
       const rawPostal = postalCodeInput.trim() || formData.postalCode?.trim() || '';
       if (!rawPostal) {
-        const errorMsg = 'Le code postal est requis.';
+        const errorMsg = 'Le code postal est requis (ex: J2C 1A1).';
         setPostalCodeErrorNotice(errorMsg);
         triggerValidation('postalCode', 'booking-field-postal', errorMsg);
         return false;
@@ -832,30 +841,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         return false;
       }
 
-      // Dynamic Category-Specific Fields Validation
+      // Dynamic Category-Specific fallback auto-fill if empty
       if (hasAutoInCart && !vehicleMakeModelInput.trim()) {
-        triggerValidation('vehicleMakeModel', 'booking-field-vehicle-desc', 'Veuillez préciser la marque, le modèle et l\'année du véhicule.');
-        return false;
+        const fallback = formData.vehicleCategory === 'suv' 
+          ? 'VUS / SUV' 
+          : formData.vehicleCategory === 'truck_van' 
+          ? 'Camionnette / Van' 
+          : 'Auto / Berline';
+        setVehicleMakeModelInput(fallback);
       }
-
       if (hasFurnitureInCart && !furnitureDescInput.trim()) {
-        triggerValidation('furnitureDesc', 'booking-field-furniture-desc', 'Veuillez décrire le meuble à nettoyer.');
-        return false;
+        setFurnitureDescInput('Mobilier / Divan');
       }
-
       if (hasCarpetInCart && !carpetDescInput.trim()) {
-        triggerValidation('carpetDesc', 'booking-field-carpet-desc', 'Veuillez préciser les dimensions et le type de tapis.');
-        return false;
+        setCarpetDescInput('Tapis & moquette');
       }
-
       if (hasMattressInCart && !mattressDescInput.trim()) {
-        triggerValidation('mattressDesc', 'booking-field-mattress-desc', 'Veuillez préciser le type et la taille du matelas.');
-        return false;
+        setMattressDescInput('Matelas');
       }
-
       if (hasTruckInCart && !truckDescInput.trim()) {
-        triggerValidation('truckDesc', 'booking-field-truck-desc', 'Veuillez décrire le camion ou les surfaces à nettoyer.');
-        return false;
+        setTruckDescInput('Camion / Poids lourd');
       }
     }
 
@@ -867,6 +872,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const handleNext = async () => {
     if (step === 1) {
       if (!validateStep(1)) return;
+      setValidationError(null);
       setStep(2);
     } else if (step === 2) {
       if (!validateStep(2)) return;
@@ -886,26 +892,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         addressVerified: true
       }));
 
+      setValidationError(null);
       setStep(3);
     } else if (step === 3) {
       if (!validateStep(3)) return;
 
+      const vehicleDesc = vehicleMakeModelInput.trim() || (formData.vehicleCategory === 'suv' ? 'VUS / SUV' : formData.vehicleCategory === 'truck_van' ? 'Camionnette / Van' : 'Auto / Berline');
+
       // Compile dynamic notes
       const notesParts = [];
-      if (hasAutoInCart && vehicleMakeModelInput.trim()) {
-        notesParts.push(`Véhicule: ${vehicleMakeModelInput.trim()}`);
+      if (hasAutoInCart) {
+        notesParts.push(`Véhicule: ${vehicleDesc}`);
       }
-      if (hasFurnitureInCart && furnitureDescInput.trim()) {
-        notesParts.push(`Meuble: ${furnitureDescInput.trim()}`);
+      if (hasFurnitureInCart) {
+        notesParts.push(`Meuble: ${furnitureDescInput.trim() || 'Mobilier'}`);
       }
-      if (hasCarpetInCart && carpetDescInput.trim()) {
-        notesParts.push(`Tapis: ${carpetDescInput.trim()}`);
+      if (hasCarpetInCart) {
+        notesParts.push(`Tapis: ${carpetDescInput.trim() || 'Tapis'}`);
       }
-      if (hasMattressInCart && mattressDescInput.trim()) {
-        notesParts.push(`Matelas: ${mattressDescInput.trim()}`);
+      if (hasMattressInCart) {
+        notesParts.push(`Matelas: ${mattressDescInput.trim() || 'Matelas'}`);
       }
-      if (hasTruckInCart && truckDescInput.trim()) {
-        notesParts.push(`Camion: ${truckDescInput.trim()}`);
+      if (hasTruckInCart) {
+        notesParts.push(`Camion: ${truckDescInput.trim() || 'Camion'}`);
       }
       if (formData.notes) {
         notesParts.push(`Notes: ${formData.notes}`);
@@ -913,21 +922,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       setFormData(prev => ({
         ...prev,
-        vehicleMakeModel: vehicleMakeModelInput.trim() || furnitureDescInput.trim() || carpetDescInput.trim() || mattressDescInput.trim() || truckDescInput.trim(),
+        vehicleMakeModel: vehicleDesc,
         notes: notesParts.join(' | '),
         bookingPhotos
       }));
 
+      setValidationError(null);
       setStep(4);
     } else if (step === 4) {
       // Final confirmation & submission directly to Square Bookings API
       setIsSubmitting(true);
       setSubmissionError(null);
+      setValidationError(null);
 
       try {
         const rawPostal = postalCodeInput.trim() || formData.confirmedPostalCode || formData.postalCode || formData.googlePostalCode || '';
         const finalSubmissionData = {
           ...formData,
+          clientName: clientName.trim() || formData.clientName,
+          clientPhone: phoneInput.trim() || formData.clientPhone,
+          clientEmail: clientEmail.trim() || formData.clientEmail,
+          serviceAddress: addressInput.trim() || formData.serviceAddress,
           postalCode: rawPostal,
           confirmedPostalCode: rawPostal,
           postalCodeSource: formData.postalCodeSource || 'manual'
@@ -1005,7 +1020,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       timeSlotLabel: 'Créneau horaire souhaité *',
       notesLabel: 'Notes particulières (taches tenaces, stationnement, etc.)',
       subtotalLabel: 'Sous-total des prestations :',
-      totalEstimated: 'Total estimé :',
+      totalEstimated: 'Prix total estimé :',
+      estimatedTime: 'Durée totale estimée :',
       localTravelNote: 'Déplacement inclus à Drummondville • Sans acompte',
       btnNext: 'Continuer',
       btnBack: 'Précédent',
@@ -1204,9 +1220,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                if (validateStep(1)) {
-                  setStep(2);
-                }
+                setValidationError(null);
+                setStep(2);
               }}
               className={`py-2.5 px-1 cursor-pointer transition-colors ${step === 2 ? 'text-[#22C55E] border-b-2 border-[#22C55E] bg-[#122416]' : 'text-[#6B7280] hover:text-white'}`}
             >
@@ -1215,9 +1230,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                if (validateStep(1) && validateStep(2)) {
-                  setStep(3);
-                }
+                setValidationError(null);
+                setStep(3);
               }}
               className={`py-2.5 px-1 cursor-pointer transition-colors ${step === 3 ? 'text-[#22C55E] border-b-2 border-[#22C55E] bg-[#122416]' : 'text-[#6B7280] hover:text-white'}`}
             >
@@ -1226,9 +1240,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                if (validateStep(1) && validateStep(2) && validateStep(3)) {
-                  setStep(4);
-                }
+                setValidationError(null);
+                setStep(4);
               }}
               className={`py-2.5 px-1 cursor-pointer transition-colors ${step === 4 ? 'text-[#22C55E] border-b-2 border-[#22C55E] bg-[#122416]' : 'text-[#6B7280] hover:text-white'}`}
             >
@@ -1755,7 +1768,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                             <div className="text-right min-w-[60px]">
                               <span className="text-xs font-mono font-black text-[#22C55E]">
-                                {item.totalPrice} $
+                                {item.totalPrice} $ CAD
                               </span>
                             </div>
 
@@ -1789,16 +1802,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         + {f.name[currentLang] || f.name.fr} ({f.price} $)
                       </button>
                     ))}
-                    {EXTRA_SERVICES.slice(0, 3).map((extra) => (
-                      <button
-                        key={extra.id}
-                        type="button"
-                        onClick={() => handleToggleExtraOption(extra.id)}
-                        className="px-2.5 py-1 rounded-lg bg-[#08120A] border border-[#1E3623] hover:border-[#22C55E] text-[11px] text-[#D1D5DB] hover:text-white transition-colors cursor-pointer"
-                      >
-                        + {extra.name[currentLang] || extra.name.fr} ({extra.price} $)
-                      </button>
-                    ))}
+                    {EXTRA_SERVICES.map((extra) => {
+                      const isAdded = cart.items.some(it => it.id === extra.id);
+                      const durBadge = extra.durationHours === 0.5 ? '+30 min' : `+${extra.durationHours} h`;
+                      return (
+                        <button
+                          key={extra.id}
+                          type="button"
+                          onClick={() => handleToggleExtraOption(extra.id)}
+                          className={`px-2.5 py-1 rounded-lg border text-[11px] transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            isAdded
+                              ? 'bg-[#16A34A] border-[#22C55E] text-white font-bold shadow-xs'
+                              : 'bg-[#08120A] border-[#1E3623] hover:border-[#22C55E] text-[#D1D5DB] hover:text-white'
+                          }`}
+                        >
+                          <span>{isAdded ? '✓' : '+'}</span>
+                          <span>{extra.name[currentLang] || extra.name.fr}</span>
+                          <span className="font-mono opacity-90">({extra.price} $ · {durBadge})</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1807,6 +1830,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <div className="flex justify-between text-[#9CA3AF]">
                     <span>{t.subtotalLabel}</span>
                     <span>{cart.subtotal} $ CAD</span>
+                  </div>
+
+                  <div className="flex justify-between text-[#9CA3AF]">
+                    <span>{currentLang === 'fr' ? 'Durée totale estimée :' : currentLang === 'ua' ? 'Орієнтовний час :' : 'Estimated duration :'}</span>
+                    <span className="text-[#22C55E] font-bold">{cart.estimatedDuration[currentLang] || cart.estimatedDuration.fr}</span>
                   </div>
 
                   {selectedLoyaltyReward && loyaltyCreditDiscount > 0 && (
