@@ -12,7 +12,7 @@ import { Language } from '../types';
 import autoDetailingService from '../assets/images/auto_detailing_service_1789747720987.jpg';
 import sofaCleaningService from '../assets/images/sofa_cleaning_service_1789747685197.jpg';
 import carpetCleaningService from '../assets/images/carpet_cleaning_service_1789747708901.jpg';
-import truckCabClean from '../assets/images/truck_cab_clean_1787364002946.jpg';
+import { WINTER_MODE } from '../config/winterMode';
 
 interface ServicesSectionProps {
   currentLang: Language;
@@ -64,7 +64,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
           description: 'Nettoyage en profondeur pour éliminer taches, odeurs et allergènes.',
           category: 'mattress' as const,
           icon: Sparkles,
-          image: truckCabClean,
+          image: '/assets/aistudio/1FFD3CBD-A7EE-4C6A-8AA5-C45FD8DD6849_aa4d03e0.PNG',
           tag: 'Literie & Matelas'
         }
       ]
@@ -109,7 +109,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
           description: 'Глибока дезінфекція від плям, неприємних запахів та алергенів.',
           category: 'mattress' as const,
           icon: Sparkles,
-          image: truckCabClean,
+          image: '/assets/aistudio/1FFD3CBD-A7EE-4C6A-8AA5-C45FD8DD6849_aa4d03e0.PNG',
           tag: 'Матраци та текстиль'
         }
       ]
@@ -154,7 +154,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
           description: 'Deep extraction to eliminate stains, lingering odors, and allergens.',
           category: 'mattress' as const,
           icon: Sparkles,
-          image: truckCabClean,
+          image: '/assets/aistudio/1FFD3CBD-A7EE-4C6A-8AA5-C45FD8DD6849_aa4d03e0.PNG',
           tag: 'Beds & Mattresses'
         }
       ]
@@ -179,9 +179,9 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
           </p>
         </div>
 
-        {/* 4 Equal Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 items-stretch">
-          {t.cards.map((card) => {
+        {/* Service Cards Grid */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${WINTER_MODE ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-4 sm:gap-5 items-stretch`}>
+          {(WINTER_MODE ? t.cards.filter((card) => card.id !== 'auto') : t.cards).map((card) => {
             const Icon = card.icon;
 
             return (

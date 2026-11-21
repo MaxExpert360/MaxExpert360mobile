@@ -35,11 +35,13 @@ import {
 } from '../data/dynastieData';
 import { calculateCartSummary, openOfficialSquareBooking } from '../services/squareBookings';
 import { formatDurationLocalized, formatSingleDuration } from '../utils/durationFormatter';
+import { calculateUnifiedBookingTotal, formatCompactCad } from '../utils/calculatorEngine';
 import { 
   AUTO_LAUNCH_PROMO, 
   isAutoPromoActive, 
   calculateServicePrice 
 } from '../config/promotions';
+import { WINTER_MODE } from '../config/winterMode';
 
 interface CostCalculatorProps {
   currentLang: Language;
@@ -52,59 +54,37 @@ interface CostCalculatorProps {
   onCalcStateChange?: React.Dispatch<React.SetStateAction<AutoCalculatorState>> | ((updater: (prev: AutoCalculatorState) => AutoCalculatorState) => void) | ((state: AutoCalculatorState) => void);
 }
 
-// Pure calculation helper for detailing auto packages
+// Pure calculation helper for detailing auto packages (uses unified calculation engine)
 export function calculateAutoTotal(
   category: string,
   packageId: string,
   selectedExtras: string[] = [],
   extraQuantities: Record<string, number> = {}
 ) {
+  const unified = calculateUnifiedBookingTotal({
+    vehicleCategory: category as any,
+    packageId,
+    selectedExtras,
+    extraQuantities
+  });
+
   const selectedPkg = DETAILING_PACKAGES.find(p => p.id === packageId) || DETAILING_PACKAGES[1];
   const vehicleKey: 'auto' | 'suv' | 'truck_van' = (category === 'suv' || category === 'truck_van') ? category : 'auto';
-  const basePrice = selectedPkg.prices[vehicleKey] ?? selectedPkg.prices.auto;
-
-  // Deduplicate extras to prevent duplicate counting
-  const uniqueExtraIds = Array.from(new Set(selectedExtras));
-  const extrasList = uniqueExtraIds
-    .map(extraId => EXTRA_SERVICES.find(e => e.id === extraId))
-    .filter(Boolean) as ExtraDetailingService[];
-
-  const extrasSum = extrasList.reduce((sum, extra) => {
-    const qty = Math.max(1, extraQuantities[extra.id] || 1);
-    return sum + (extra.price * qty);
-  }, 0);
-
-  const extraMinutes = extrasList.reduce((sum, extra) => {
-    const qty = Math.max(1, extraQuantities[extra.id] || 1);
-    const durHours = extra.durationHours ?? 1;
-    return sum + Math.round(durHours * 60 * qty);
-  }, 0);
-
-  const baseMinutesRange = selectedPkg.id === 'express'
-    ? { min: 90, max: 120 }
-    : selectedPkg.id === 'remise_a_neuf'
-    ? { min: 240, max: 360 }
-    : { min: 180, max: 240 };
-
-  const totalMinMinutes = baseMinutesRange.min + extraMinutes;
-  const totalMaxMinutes = baseMinutesRange.max + extraMinutes;
+  const baseMinutesMax = selectedPkg.id === 'express' ? 120 : selectedPkg.id === 'remise_a_neuf' ? 360 : 240;
+  const extraMinutes = Math.max(0, unified.durationMinutesRange.max - baseMinutesMax);
 
   return {
     selectedPkg,
     vehicleKey,
-    basePrice,
-    extrasSum,
+    basePrice: unified.basePrice,
+    extrasSum: unified.extrasSum,
     extraMinutes,
     extraHours: extraMinutes / 60,
-    extrasList,
-    totalPrice: basePrice + extrasSum,
-    durationMinutesRange: { min: totalMinMinutes, max: totalMaxMinutes },
-    durationHoursRange: { min: totalMinMinutes / 60, max: totalMaxMinutes / 60 },
-    duration: {
-      fr: formatDurationLocalized(totalMinMinutes, totalMaxMinutes, 'fr'),
-      ua: formatDurationLocalized(totalMinMinutes, totalMaxMinutes, 'ua'),
-      en: formatDurationLocalized(totalMinMinutes, totalMaxMinutes, 'en')
-    }
+    extrasList: unified.uniqueExtrasList,
+    totalPrice: unified.totalPrice,
+    durationMinutesRange: unified.durationMinutesRange,
+    durationHoursRange: { min: unified.durationMinutesRange.min / 60, max: unified.durationMinutesRange.max / 60 },
+    duration: unified.durationFormatted
   };
 }
 
@@ -118,13 +98,17 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
   calcState: propCalcState,
   onCalcStateChange
 }) => {
-  const [internalActiveTab, setInternalActiveTab] = useState<'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck'>('auto');
-  const activeTab = activeCategoryTab || internalActiveTab;
+  const [internalActiveTab, setInternalActiveTab] = useState<'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck'>(
+    WINTER_MODE ? 'furniture' : 'auto'
+  );
+  const rawActiveTab = activeCategoryTab || internalActiveTab;
+  const activeTab = WINTER_MODE && rawActiveTab === 'auto' ? 'furniture' : rawActiveTab;
   
   const handleTabSelect = (tab: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck') => {
-    setInternalActiveTab(tab);
+    const safeTab = WINTER_MODE && tab === 'auto' ? 'furniture' : tab;
+    setInternalActiveTab(safeTab);
     if (onCategoryTabChange) {
-      onCategoryTabChange(tab);
+      onCategoryTabChange(safeTab);
     }
   };
 
@@ -194,7 +178,9 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
     ua: {
       eyebrow: 'Повна Прозорість та Швидкий Розрахунок',
       title: 'Онлайн-Калькулятор Вартості',
-      subtitle: 'Оберіть потрібну послугу (Auto, Sofa, Tapis, Matelas чи Camion) для миттєвого розрахунку вартості.',
+      subtitle: WINTER_MODE
+        ? 'Оберіть потрібну послугу (Sofa, Tapis, Matelas чи Camion) для миттєвого розрахунку вартості.'
+        : 'Оберіть потрібну послугу (Auto, Sofa, Tapis, Matelas чи Camion) для миттєвого розрахунку вартості.',
       tabAuto: '🚗 Auto',
       tabFurniture: '🛋️ Sofa',
       tabCarpet: '🟫 Tapis',
@@ -224,7 +210,9 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
     en: {
       eyebrow: 'Total Transparency & Upfront Pricing',
       title: 'Online Instant Quote Calculator',
-      subtitle: 'Select what you need cleaned (Auto, Sofa, Tapis, Mattress or Truck) for an instant detailed estimate.',
+      subtitle: WINTER_MODE
+        ? 'Select what you need cleaned (Sofa, Tapis, Mattress or Truck) for an instant detailed estimate.'
+        : 'Select what you need cleaned (Auto, Sofa, Tapis, Mattress or Truck) for an instant detailed estimate.',
       tabAuto: '🚗 Auto',
       tabFurniture: '🛋️ Sofa',
       tabCarpet: '🟫 Tapis',
@@ -540,27 +528,35 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
               <span className="text-xl animate-bounce select-none">👆</span>
               <span className="text-xs font-black uppercase text-[#15803D] tracking-wider">
                 {currentLang === 'fr' 
-                  ? 'Cliquez pour choisir votre service (Auto, Sofa, Tapis, Matelas, Camion) :' 
+                  ? (WINTER_MODE
+                      ? 'Cliquez pour choisir votre service (Sofa, Tapis, Matelas, Camion) :'
+                      : 'Cliquez pour choisir votre service (Auto, Sofa, Tapis, Matelas, Camion) :')
                   : currentLang === 'ua' 
-                  ? 'Натисніть нижче, щоб обрати послугу (Auto, Sofa, Tapis, Matelas, Camion) :' 
-                  : 'Click below to select your service (Auto, Sofa, Tapis, Mattress, Truck) :'}
+                  ? (WINTER_MODE
+                      ? 'Натисніть нижче, щоб обрати послугу (Sofa, Tapis, Matelas, Camion) :'
+                      : 'Натисніть нижче, щоб обрати послугу (Auto, Sofa, Tapis, Matelas, Camion) :')
+                  : (WINTER_MODE
+                      ? 'Click below to select your service (Sofa, Tapis, Mattress, Truck) :'
+                      : 'Click below to select your service (Auto, Sofa, Tapis, Mattress, Truck) :')}
               </span>
             </div>
           </div>
 
           {/* Service Category Switcher Tabs */}
           <div className="flex flex-wrap justify-center gap-2 p-2 rounded-2xl bg-[#F4FAF6] border border-[#D5EAD9] shadow-xs mt-4">
-            <button
-              type="button"
-              onClick={() => handleTabSelect('auto')}
-              className={`px-4 sm:px-6 py-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
-                activeTab === 'auto'
-                  ? 'bg-[#16A34A] text-white shadow-md shadow-[#16A34A]/25 scale-102 ring-2 ring-[#BEE7CB]'
-                  : 'text-[#3E6552] hover:text-[#0D2818] bg-white border border-[#D5EAD9] hover:border-[#16A34A]'
-              }`}
-            >
-              <span>{t.tabAuto}</span>
-            </button>
+            {!WINTER_MODE && (
+              <button
+                type="button"
+                onClick={() => handleTabSelect('auto')}
+                className={`px-4 sm:px-6 py-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === 'auto'
+                    ? 'bg-[#16A34A] text-white shadow-md shadow-[#16A34A]/25 scale-102 ring-2 ring-[#BEE7CB]'
+                    : 'text-[#3E6552] hover:text-[#0D2818] bg-white border border-[#D5EAD9] hover:border-[#16A34A]'
+                }`}
+              >
+                <span>{t.tabAuto}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => handleTabSelect('furniture')}
@@ -614,7 +610,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
           <div className="lg:col-span-7 space-y-6">
             
             {/* TAB 1: AUTO */}
-            {activeTab === 'auto' && (
+            {!WINTER_MODE && activeTab === 'auto' && (
               <div className="space-y-6 animate-fade-in">
                 {/* Vehicle Category */}
                 <div className="bg-[#F8FCF9] border border-[#D5EAD9] rounded-2xl p-5 sm:p-6 space-y-3.5 shadow-xs">
@@ -766,25 +762,25 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
 
                           {/* Stepper for unit-based items when checked */}
                           {isChecked && isUnitBased && (
-                            <div className="mt-2.5 pt-2 border-t border-[#BEE7CB] flex items-center justify-between text-xs">
-                              <span className="font-bold text-[#0D2818] text-[11px]">
+                            <div className="mt-2.5 pt-2 border-t border-[#BEE7CB] flex flex-wrap sm:flex-nowrap items-center justify-between gap-1.5 text-xs">
+                              <span className="font-bold text-[#0D2818] text-[11px] truncate">
                                 {extra.id === 'difficult_stains' 
                                   ? (currentLang === 'fr' ? 'Nombre de taches :' : currentLang === 'ua' ? 'Кількість плям :' : 'Number of stains :')
                                   : (currentLang === 'fr' ? "Nombre d'interventions :" : currentLang === 'ua' ? 'Кількість процедур :' : 'Number of treatments :')}
                               </span>
-                              <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="flex items-center gap-1 shrink-0 ml-auto">
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleUpdateExtraQuantity(extra.id, qty - 1);
                                   }}
-                                  className="w-6 h-6 rounded bg-white border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer"
+                                  className="w-6 h-6 rounded bg-white border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer shrink-0"
                                   aria-label="Diminuer"
                                 >
                                   -
                                 </button>
-                                <span className="font-mono font-bold text-xs text-[#0D2818] min-w-[20px] text-center">
+                                <span className="font-mono font-bold text-xs text-[#0D2818] min-w-[18px] text-center shrink-0">
                                   {qty}
                                 </span>
                                 <button
@@ -793,12 +789,12 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                                     e.stopPropagation();
                                     handleUpdateExtraQuantity(extra.id, qty + 1);
                                   }}
-                                  className="w-6 h-6 rounded bg-white border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer"
+                                  className="w-6 h-6 rounded bg-white border border-[#BEE7CB] text-[#15803D] font-bold flex items-center justify-center hover:bg-[#16A34A] hover:text-white transition-colors cursor-pointer shrink-0"
                                   aria-label="Augmenter"
                                 >
                                   +
                                 </button>
-                                <span className="font-mono font-bold text-[#15803D] text-[11px] ml-1 bg-white px-1.5 py-0.5 rounded border border-[#BEE7CB]">
+                                <span className="font-mono font-bold text-[#15803D] text-[10px] sm:text-[11px] ml-1 bg-white px-1.5 py-0.5 rounded border border-[#BEE7CB] shrink-0 whitespace-nowrap">
                                   +{totalExtraPrice} $ · +{formatSingleDuration(Math.round((extra.durationHours ?? 1) * 60) * qty, currentLang)}
                                 </span>
                               </div>
@@ -929,7 +925,7 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
                   <span>Sélectionnez vos matelas à désinfecter</span>
                 </h3>
                 <div className="space-y-3">
-                  {MATTRESS_SERVICES.map((item) => {
+                  {(WINTER_MODE ? MATTRESS_SERVICES.filter(m => m.id !== 'siege_auto_bebe') : MATTRESS_SERVICES).map((item) => {
                     const count = selectedMattress[item.id] || 0;
                     return (
                       <div key={item.id} className="p-3.5 rounded-xl bg-white border border-[#D5EAD9] flex items-center justify-between gap-3">
@@ -1084,23 +1080,23 @@ export const CostCalculator: React.FC<CostCalculatorProps> = ({
               </div>
 
               {/* Total display */}
-              <div className="p-4 rounded-xl bg-gradient-to-br from-[#EAF6EE] to-[#DCF2E2] border border-[#BEE7CB] flex items-baseline justify-between">
-                <div>
+              <div className="p-4 rounded-xl bg-gradient-to-br from-[#EAF6EE] to-[#DCF2E2] border border-[#BEE7CB] flex flex-wrap items-baseline justify-between gap-2 overflow-hidden">
+                <div className="min-w-0 flex-1">
                   <span className="text-[10px] uppercase font-mono text-[#15803D] block font-bold">
                     {t.totalEstimated}
                   </span>
-                  <span className="font-heading text-4xl font-black text-[#0D2818]">
+                  <div className="font-heading text-2xl sm:text-3xl lg:text-4xl font-black text-[#0D2818] tracking-tight whitespace-nowrap">
                     {typeof calculation.finalDisplayTotal === 'number'
                       ? (calculation.finalDisplayTotal % 1 === 0
                           ? calculation.finalDisplayTotal
                           : calculation.finalDisplayTotal.toFixed(2))
                       : calculation.finalDisplayTotal} $ CAD
-                  </span>
-                  <span className="text-[10px] text-[#3E6552] block font-mono">
+                  </div>
+                  <span className="text-[10px] text-[#3E6552] block font-mono mt-0.5">
                     CAD • Déplacement local inclus
                   </span>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <span className="text-[9px] uppercase font-mono text-[#15803D] bg-white/80 px-2 py-1 rounded border border-[#BEE7CB]">
                     Sans acompte
                   </span>

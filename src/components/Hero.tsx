@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { Language } from '../types';
 import { DYNASTIE_INFO } from '../data/dynastieData';
-import detailingVanHero from '../assets/images/detailing_van_hero_1789747671511.jpg';
+import { WINTER_MODE } from '../config/winterMode';
 
 interface HeroProps {
   currentLang: Language;
@@ -31,7 +31,7 @@ export const Hero: React.FC<HeroProps> = ({
       location: '📍 DRUMMONDVILLE ET ENVIRONS',
       title1: 'NETTOYAGE MOBILE',
       title2: 'PROFESSIONNEL',
-      servicesList: 'Autos • Meubles • Tapis • Matelas',
+      servicesList: WINTER_MODE ? 'Meubles • Tapis • Matelas' : 'Autos • Meubles • Tapis • Matelas',
       description: 'Service mobile à domicile à Drummondville et environs. Un nettoyage professionnel en profondeur directement chez vous.',
       btnBook: 'RÉSERVER MAINTENANT →',
       btnServices: 'VOIR NOS SERVICES',
@@ -49,7 +49,7 @@ export const Hero: React.FC<HeroProps> = ({
       location: '📍 ДРАММОНДВІЛЬ ТА РЕГІОН',
       title1: 'МОБІЛЬНИЙ КЛІНІНГ',
       title2: 'ПРОФЕСІЙНИЙ',
-      servicesList: 'Авто • Меблі • Килими • Матраци',
+      servicesList: WINTER_MODE ? 'Меблі • Килими • Матраци' : 'Авто • Меблі • Килими • Матраци',
       description: 'Мобільний сервіс додому в Драммондвілі та околицях. Професійне глибоке очищення безпосередньо у вас вдома.',
       btnBook: 'ЗАБРОНЮВАТИ ЗАРАЗ →',
       btnServices: 'НАШІ ПОСЛУГИ',
@@ -67,7 +67,7 @@ export const Hero: React.FC<HeroProps> = ({
       location: '📍 DRUMMONDVILLE & AREA',
       title1: 'PROFESSIONAL MOBILE',
       title2: 'CLEANING',
-      servicesList: 'Cars • Furniture • Carpets • Mattresses',
+      servicesList: WINTER_MODE ? 'Furniture • Carpets • Mattresses' : 'Cars • Furniture • Carpets • Mattresses',
       description: 'Mobile at-home service in Drummondville and surrounding area. Professional deep cleaning directly at your door.',
       btnBook: 'BOOK NOW →',
       btnServices: 'VIEW OUR SERVICES',
@@ -219,7 +219,7 @@ export const Hero: React.FC<HeroProps> = ({
               {/* Real Generated Van Image Container */}
               <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-[#F0FAF3] border border-[#D8EBDD] shadow-inner">
                 <img 
-                  src={detailingVanHero} 
+                  src="/assets/aistudio/672EAD07-829E-4A29-B3CB-4EF48E7DAF03_dbf7f12d.PNG" 
                   alt="Max Expert 360 GMC Savana - Unité Mobile Drummondville" 
                   className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
                 />

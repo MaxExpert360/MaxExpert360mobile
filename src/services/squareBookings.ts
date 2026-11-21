@@ -4,6 +4,7 @@ import { formatDurationLocalized } from '../utils/durationFormatter';
 import { getApiUrl } from '../config/api';
 import { getLocalizedSlotLabel, validateBookingSchedule } from '../config/bookingSchedule';
 import { getClientGooglePlacesSuggestions, getClientGooglePlaceDetails } from './googleMapsLoader';
+import { WINTER_MODE } from '../config/winterMode';
 
 export interface SquareApiErrorDetail {
   category: string;
@@ -362,6 +363,42 @@ export async function copySummaryToClipboard(text: string): Promise<boolean> {
  * Creates default initial cart (SUV Interieur + Exterieur Complet)
  */
 export function createDefaultCart(): BookingCart {
+  if (WINTER_MODE) {
+    return {
+      items: [
+        {
+          id: 'sofa_3',
+          category: 'furniture',
+          name: {
+            fr: 'Sofa standard 3 places',
+            ua: 'Диван стандарт 3-місний',
+            en: 'Standard 3-seat sofa'
+          },
+          details: {
+            fr: "Nettoyage & Extraction à l'eau chaude",
+            ua: 'Хімчистка та гаряча екстракція',
+            en: 'Hot water deep extraction'
+          },
+          quantity: 1,
+          unitPrice: 130,
+          totalPrice: 130
+        }
+      ],
+      subtotal: 130,
+      travelFee: 0,
+      minimumAdjustment: 0,
+      totalPrice: 130,
+      durationMinutes: 135,
+      durationMinutesRange: { min: 90, max: 180 },
+      estimatedDuration: {
+        fr: formatDurationLocalized(90, 180, 'fr'),
+        ua: formatDurationLocalized(90, 180, 'ua'),
+        en: formatDurationLocalized(90, 180, 'en')
+      },
+      activeCategory: 'furniture'
+    };
+  }
+
   return {
     items: [
       {
@@ -476,7 +513,7 @@ export function calculateCartSummary(items: CartItem[], activeCategory?: 'auto' 
       ua: durUa,
       en: durEn
     },
-    activeCategory: activeCategory || (activeItems.length > 1 ? 'multi' : activeItems[0]?.category || 'auto')
+    activeCategory: activeCategory || (activeItems.length > 1 ? 'multi' : activeItems[0]?.category || (WINTER_MODE ? 'furniture' : 'auto'))
   };
 }
 

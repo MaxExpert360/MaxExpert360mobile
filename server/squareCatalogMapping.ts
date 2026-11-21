@@ -485,6 +485,7 @@ export const SQUARE_SERVICE_MAPPINGS: Record<string, ServiceVariationMapping> = 
 
 /**
  * Finds or constructs the best matching ServiceVariation for a given cart item.
+ * Strictly prevents assigning a sedan variation to an SUV or truck booking.
  */
 export function resolveServiceVariation(
   itemId: string, 
@@ -500,29 +501,56 @@ export function resolveServiceVariation(
   priceCents: number;
   category: string;
 } {
-  // 1. Check if mapping has a known Square Catalog Variation ID that matches live catalog
-  const mapped = SQUARE_SERVICE_MAPPINGS[itemId];
-  if (mapped && mapped.squareVariationId) {
-    const liveMatch = liveCatalogVariations.find(v => v.id === mapped.squareVariationId);
-    if (liveMatch) {
-      const teamId = liveMatch.teamMemberIds?.[0] || defaultTeamMemberId;
-      return {
-        serviceVariationId: liveMatch.id,
-        serviceVariationVersion: liveMatch.version || 1,
-        teamMemberId: teamId,
-        name: liveMatch.itemName ? `${liveMatch.itemName} (${liveMatch.name})` : (mapped.serviceName || liveMatch.name),
-        durationMinutes: liveMatch.durationMinutes || mapped.durationMinutes || 90,
-        priceCents: liveMatch.priceCents || mapped.priceCents || 9900,
-        category: mapped.category
-      };
+  // 1. Direct or normalized lookup in SQUARE_SERVICE_MAPPINGS
+  let mapped = SQUARE_SERVICE_MAPPINGS[itemId];
+  if (!mapped) {
+    const clean = (itemId || '').toLowerCase();
+    if (clean.includes('complet') && (clean.includes('suv') || clean.includes('vus'))) {
+      mapped = SQUARE_SERVICE_MAPPINGS['interieur_exterieur_complet_suv'] || SQUARE_SERVICE_MAPPINGS['complet_suv'];
+    } else if (clean.includes('complet') && (clean.includes('truck') || clean.includes('van') || clean.includes('camionnette'))) {
+      mapped = SQUARE_SERVICE_MAPPINGS['interieur_exterieur_complet_truck_van'] || SQUARE_SERVICE_MAPPINGS['complet_truck_van'];
+    } else if (clean.includes('complet')) {
+      mapped = SQUARE_SERVICE_MAPPINGS['interieur_exterieur_complet_auto'] || SQUARE_SERVICE_MAPPINGS['complet_auto'];
+    } else if (clean.includes('express') && (clean.includes('suv') || clean.includes('vus'))) {
+      mapped = SQUARE_SERVICE_MAPPINGS['express_suv'];
+    } else if (clean.includes('express') && (clean.includes('truck') || clean.includes('van') || clean.includes('camionnette'))) {
+      mapped = SQUARE_SERVICE_MAPPINGS['express_truck_van'];
+    } else if (clean.includes('express')) {
+      mapped = SQUARE_SERVICE_MAPPINGS['express_auto'];
+    } else if (clean.includes('remise') && (clean.includes('suv') || clean.includes('vus'))) {
+      mapped = SQUARE_SERVICE_MAPPINGS['remise_a_neuf_suv'];
+    } else if (clean.includes('remise') && (clean.includes('truck') || clean.includes('van') || clean.includes('camionnette'))) {
+      mapped = SQUARE_SERVICE_MAPPINGS['remise_a_neuf_truck_van'];
+    } else if (clean.includes('remise')) {
+      mapped = SQUARE_SERVICE_MAPPINGS['remise_a_neuf_auto'];
     }
   }
 
-  // 2. Exact or fuzzy match in live catalog variations by name / keyword
+  // If mapped has a known Square Variation ID, ALWAYS honor it
+  if (mapped && mapped.squareVariationId) {
+    const liveMatch = liveCatalogVariations.find(v => v.id === mapped?.squareVariationId);
+    const teamId = liveMatch?.teamMemberIds?.[0] || defaultTeamMemberId;
+    return {
+      serviceVariationId: mapped.squareVariationId,
+      serviceVariationVersion: liveMatch?.version || 1,
+      teamMemberId: teamId,
+      name: liveMatch?.itemName ? `${liveMatch.itemName} (${liveMatch.name})` : (mapped.serviceName || mapped.serviceId),
+      durationMinutes: liveMatch?.durationMinutes || mapped.durationMinutes || 90,
+      priceCents: liveMatch?.priceCents || mapped.priceCents || 9900,
+      category: mapped.category
+    };
+  }
+
+  // 2. Fuzzy match in live catalog variations respecting vehicle category
   if (liveCatalogVariations.length > 0) {
     const cleanId = (itemId || '').toLowerCase().replace(/_/g, ' ');
+    const isSuv = cleanId.includes('suv') || cleanId.includes('vus');
+    const isTruck = cleanId.includes('truck') || cleanId.includes('van') || cleanId.includes('camion');
+
     const directMatch = liveCatalogVariations.find(v => {
       const fullName = `${v.itemName || ''} ${v.name || ''}`.toLowerCase();
+      if (isSuv && !fullName.includes('suv') && !fullName.includes('vus')) return false;
+      if (isTruck && !fullName.includes('van') && !fullName.includes('camion')) return false;
       return Boolean(
         (cleanId && fullName.includes(cleanId)) ||
         (mapped?.serviceName && fullName.includes(mapped.serviceName.toLowerCase()))
@@ -543,30 +571,34 @@ export function resolveServiceVariation(
     }
   }
 
-  // 3. Fallback to primary live catalog variation if available (e.g. for custom furniture / mattresses)
-  if (liveCatalogVariations.length > 0) {
-    const primary = liveCatalogVariations[0];
-    const teamId = primary.teamMemberIds?.[0] || defaultTeamMemberId;
-    return {
-      serviceVariationId: primary.id,
-      serviceVariationVersion: primary.version || 1,
-      teamMemberId: teamId,
-      name: mapped?.serviceName || `${primary.itemName || primary.name} (MaxExpert360)`,
-      durationMinutes: mapped?.durationMinutes || primary.durationMinutes || 60,
-      priceCents: mapped?.priceCents || primary.priceCents || 5000,
-      category: itemCategory
-    };
+  // 3. Fallback based on category and vehicle type (never assign sedan Express to an SUV)
+  const isSuvTarget = itemId.toLowerCase().includes('suv') || itemId.toLowerCase().includes('vus');
+  const isTruckTarget = itemId.toLowerCase().includes('truck') || itemId.toLowerCase().includes('van');
+
+  let defaultVarId = 'UDZ4SIUF4K6QV4BPWMKIGX35'; // Complet SUV default
+  let defaultDuration = 180;
+  let defaultPrice = 20900;
+  let defaultName = 'Intérieur + Extérieur Complet (VUS / SUV)';
+
+  if (isTruckTarget) {
+    defaultVarId = 'KZL6U2U75JJOWTGJTWO5IEDX';
+    defaultDuration = 210;
+    defaultPrice = 17900;
+    defaultName = 'Intérieur + Extérieur Complet (Camionnette / Van)';
+  } else if (!isSuvTarget && (itemId.includes('auto') || itemId.includes('berline'))) {
+    defaultVarId = '342W7MSVZOPPNMQAMPZIXAPK';
+    defaultDuration = 150;
+    defaultPrice = 14900;
+    defaultName = 'Intérieur + Extérieur Complet (Auto / Berline)';
   }
 
-  // 4. Default fallback (when catalog is offline)
-  const defaultVarId = mapped?.squareVariationId || mapped?.defaultVariationId || 'CQ4JQP7RN4JGAS42Y2F4BSUG';
   return {
-    serviceVariationId: defaultVarId,
+    serviceVariationId: mapped?.squareVariationId || mapped?.defaultVariationId || defaultVarId,
     serviceVariationVersion: 1,
     teamMemberId: defaultTeamMemberId,
-    name: mapped?.serviceName || `Service ${itemCategory} - MaxExpert360`,
-    durationMinutes: mapped?.durationMinutes || 60,
-    priceCents: mapped?.priceCents || 5000,
+    name: mapped?.serviceName || defaultName,
+    durationMinutes: mapped?.durationMinutes || defaultDuration,
+    priceCents: mapped?.priceCents || defaultPrice,
     category: itemCategory
   };
 }

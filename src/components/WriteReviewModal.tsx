@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Language } from '../types';
 import { getApiUrl } from '../config/api';
+import { WINTER_MODE } from '../config/winterMode';
 
 interface WriteReviewModalProps {
   isOpen: boolean;
@@ -244,7 +245,10 @@ export const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
                     className="w-full appearance-none px-3.5 py-2.5 rounded-xl bg-[#F8FCF9] border border-[#D5EAD9] text-xs text-[#0D2818] focus:border-[#16A34A] focus:bg-white focus:outline-none transition-colors pr-8 cursor-pointer"
                   >
                     <option value="">-- Sélectionnez un service si applicable --</option>
-                    {SERVICE_OPTIONS.map((srv) => (
+                    {(WINTER_MODE
+                      ? SERVICE_OPTIONS.filter((srv) => !srv.toLowerCase().includes('automobile'))
+                      : SERVICE_OPTIONS
+                    ).map((srv) => (
                       <option key={srv} value={srv}>
                         {srv}
                       </option>

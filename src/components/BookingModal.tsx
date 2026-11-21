@@ -30,7 +30,8 @@ import {
   Language,
   CartItem,
   AutoCalculatorState,
-  ParsedAddressDetails
+  ParsedAddressDetails,
+  VehicleCategory
 } from '../types';
 import {
   EXTRA_SERVICES,
@@ -71,6 +72,7 @@ import {
 } from '../services/squareBookings';
 import { ensureGoogleMapsLoaded } from '../services/googleMapsLoader';
 import { VisualDatePicker } from './VisualDatePicker';
+import { WINTER_MODE } from '../config/winterMode';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -135,24 +137,52 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const autocompleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Dynamic category custom fields
+  const [vehicleCategoryInput, setVehicleCategoryInput] = useState<VehicleCategory>(
+    initialState?.vehicleCategory || (WINTER_MODE ? 'sofa' : 'suv')
+  );
+  const [vehicleMakeInput, setVehicleMakeInput] = useState('');
+  const [vehicleModelInput, setVehicleModelInput] = useState('');
+  const [vehicleYearInput, setVehicleYearInput] = useState(new Date().getFullYear().toString());
   const [vehicleMakeModelInput, setVehicleMakeModelInput] = useState('');
   const [furnitureDescInput, setFurnitureDescInput] = useState('');
   const [carpetDescInput, setCarpetDescInput] = useState('');
   const [mattressDescInput, setMattressDescInput] = useState('');
   const [truckDescInput, setTruckDescInput] = useState('');
   const [bookingPhotos, setBookingPhotos] = useState<string[]>([]);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
 
   const handleBookingPhotoFiles = async (files: FileList | null) => {
     if (!files) return;
     const selected = Array.from(files).slice(0, Math.max(0, 5 - bookingPhotos.length));
     const valid = selected.filter(file => file.type.startsWith('image/') && file.size <= 10 * 1024 * 1024);
-    const urls = await Promise.all(valid.map(file => new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    })));
-    setBookingPhotos(prev => [...prev, ...urls].slice(0, 5));
+    if (valid.length === 0) return;
+
+    setIsUploadingPhotos(true);
+    try {
+      const base64List = await Promise.all(valid.map(file => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      })));
+
+      // Upload directly to server disk endpoint (/api/upload-photos)
+      const res = await fetch('/api/upload-photos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photos: base64List })
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.urls) && data.urls.length > 0) {
+        setBookingPhotos(prev => [...prev, ...data.urls].slice(0, 5));
+      } else {
+        setBookingPhotos(prev => [...prev, ...base64List].slice(0, 5));
+      }
+    } catch {
+      // Fallback in case of network issue
+    } finally {
+      setIsUploadingPhotos(false);
+    }
   };
 
   // Selected loyalty reward
@@ -167,7 +197,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   });
 
   const [formData, setFormData] = useState<AutoBookingFormData>({
-    vehicleCategory: initialState?.vehicleCategory || 'suv',
+    vehicleCategory: initialState?.vehicleCategory || (WINTER_MODE ? 'sofa' : 'suv'),
     vehicleMakeModel: '',
     vehicleYear: new Date().getFullYear().toString(),
     packageId: initialState?.packageId || 'complet',
@@ -283,21 +313,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           extraQuantities: initialState.extraQuantities || prev.extraQuantities
         }));
 
-        const isDefaultCatLabel = !vehicleMakeModelInput.trim() || 
-          vehicleMakeModelInput === 'Auto / Berline' || 
-          vehicleMakeModelInput === 'VUS / SUV' || 
-          vehicleMakeModelInput === 'Camionnette / Van' ||
-          vehicleMakeModelInput === 'Легкове авто / Седан' ||
-          vehicleMakeModelInput === 'Кросовер / VUS' ||
-          vehicleMakeModelInput === 'Пікап / Вен';
+        if (!WINTER_MODE) {
+          const isDefaultCatLabel = !vehicleMakeModelInput.trim() || 
+            vehicleMakeModelInput === 'Auto / Berline' || 
+            vehicleMakeModelInput === 'VUS / SUV' || 
+            vehicleMakeModelInput === 'Camionnette / Van' ||
+            vehicleMakeModelInput === 'Легкове авто / Седан' ||
+            vehicleMakeModelInput === 'Кросовер / VUS' ||
+            vehicleMakeModelInput === 'Пікап / Вен';
 
-        if (isDefaultCatLabel) {
-          const defaultCatLabel = initialState.vehicleCategory === 'suv' 
-            ? 'VUS / SUV' 
-            : initialState.vehicleCategory === 'truck_van' 
-            ? 'Camionnette / Van' 
-            : 'Auto / Berline';
-          setVehicleMakeModelInput(defaultCatLabel);
+          if (isDefaultCatLabel) {
+            const defaultCatLabel = initialState.vehicleCategory === 'suv' 
+              ? 'VUS / SUV' 
+              : initialState.vehicleCategory === 'truck_van' 
+              ? 'Camionnette / Van' 
+              : 'Auto / Berline';
+            setVehicleMakeModelInput(defaultCatLabel);
+          }
         }
       }
       setStep(1);
@@ -749,7 +781,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   };
 
   // Dynamic Cart Category detection
-  const hasAutoInCart = useMemo(() => cart.items.some(it => it.category === 'auto'), [cart.items]);
+  const hasAutoInCart = useMemo(() => WINTER_MODE ? false : cart.items.some(it => it.category === 'auto'), [cart.items]);
   const hasFurnitureInCart = useMemo(() => cart.items.some(it => it.category === 'furniture'), [cart.items]);
   const hasCarpetInCart = useMemo(() => cart.items.some(it => it.category === 'carpet'), [cart.items]);
   const hasMattressInCart = useMemo(() => cart.items.some(it => it.category === 'mattress'), [cart.items]);
@@ -766,6 +798,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const finalAdjustedTotal = useMemo(() => {
     return Math.max(0, cart.totalPrice - loyaltyCreditDiscount);
   }, [cart.totalPrice, loyaltyCreditDiscount]);
+
+  // Google Ads conversion tracking: fires exactly once when booking is confirmed with valid bookingId
+  useEffect(() => {
+    if (step === 5 && bookingResult?.bookingId) {
+      const storageKey = `gads_conv_${bookingResult.bookingId}`;
+      if (!sessionStorage.getItem(storageKey)) {
+        sessionStorage.setItem(storageKey, 'true');
+        try {
+          if (typeof (window as any).gtag === 'function') {
+            (window as any).gtag('event', 'conversion', {
+              send_to: 'AW-CONVERSION_ID/LABEL',
+              value: finalAdjustedTotal,
+              currency: 'CAD',
+              transaction_id: bookingResult.bookingId
+            });
+            console.log('[Google Ads Conversion] Event fired successfully for booking ID:', bookingResult.bookingId);
+          }
+        } catch (e) {
+          console.warn('[Google Ads Conversion] Could not fire event:', e);
+        }
+      }
+    }
+  }, [step, bookingResult, finalAdjustedTotal]);
 
   // ================= STEP VALIDATION RULES =================
   const validateStep = (currentStepNumber: 1 | 2 | 3 | 4): boolean => {
@@ -843,15 +898,40 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         return false;
       }
 
-      // Dynamic Category-Specific fallback auto-fill if empty
-      if (hasAutoInCart && !vehicleMakeModelInput.trim()) {
-        const fallback = formData.vehicleCategory === 'suv' 
-          ? 'VUS / SUV' 
-          : formData.vehicleCategory === 'truck_van' 
-          ? 'Camionnette / Van' 
-          : 'Auto / Berline';
-        setVehicleMakeModelInput(fallback);
+      // Mandatory Vehicle Validation: If the cart has auto or truck, Make, Model, and Year are required!
+      const isVehicleBooking = WINTER_MODE ? false : (hasAutoInCart || hasTruckInCart || ['auto', 'suv', 'truck_van', 'heavy_truck', 'rv'].includes(vehicleCategoryInput));
+      if (isVehicleBooking) {
+        if (!vehicleMakeInput.trim()) {
+          const msg = currentLang === 'fr' 
+            ? 'La marque du véhicule est obligatoire (ex: Toyota, Honda, Ford).' 
+            : currentLang === 'ua'
+            ? 'Марка авто є обовʼязковою (напр. Toyota, Honda, Ford).'
+            : 'Vehicle make is required (e.g. Toyota, Honda, Ford).';
+          triggerValidation('vehicleMake', 'booking-field-vehicle-make', msg);
+          return false;
+        }
+
+        if (!vehicleModelInput.trim()) {
+          const msg = currentLang === 'fr' 
+            ? 'Le modèle du véhicule est obligatoire (ex: RAV4, Civic, F-150).' 
+            : currentLang === 'ua'
+            ? 'Модель авто є обовʼязковою (напр. RAV4, Civic, F-150).'
+            : 'Vehicle model is required (e.g. RAV4, Civic, F-150).';
+          triggerValidation('vehicleModel', 'booking-field-vehicle-model', msg);
+          return false;
+        }
+
+        if (!vehicleYearInput.trim()) {
+          const msg = currentLang === 'fr' 
+            ? 'L\'année du véhicule est obligatoire (ex: 2022).' 
+            : currentLang === 'ua'
+            ? 'Рік випуску авто є обовʼязковим (напр. 2022).'
+            : 'Vehicle year is required (e.g. 2022).';
+          triggerValidation('vehicleYear', 'booking-field-vehicle-year', msg);
+          return false;
+        }
       }
+
       if (hasFurnitureInCart && !furnitureDescInput.trim()) {
         setFurnitureDescInput('Mobilier / Divan');
       }
@@ -899,12 +979,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     } else if (step === 3) {
       if (!validateStep(3)) return;
 
-      const vehicleDesc = vehicleMakeModelInput.trim() || (formData.vehicleCategory === 'suv' ? 'VUS / SUV' : formData.vehicleCategory === 'truck_van' ? 'Camionnette / Van' : 'Auto / Berline');
+      const fullVehicleName = `${vehicleMakeInput.trim()} ${vehicleModelInput.trim()} ${vehicleYearInput.trim()}`.trim();
+      const vehicleDesc = fullVehicleName || vehicleMakeModelInput.trim();
 
       // Compile dynamic notes
       const notesParts = [];
-      if (hasAutoInCart) {
-        notesParts.push(`Véhicule: ${vehicleDesc}`);
+      if (!WINTER_MODE && (hasAutoInCart || hasTruckInCart || vehicleMakeInput)) {
+        notesParts.push(`Véhicule: [${vehicleCategoryInput === 'suv' ? 'VUS/SUV' : vehicleCategoryInput === 'truck_van' ? 'Camionnette/Van' : 'Auto/Berline'}] ${fullVehicleName}`);
       }
       if (hasFurnitureInCart) {
         notesParts.push(`Meuble: ${furnitureDescInput.trim() || 'Mobilier'}`);
@@ -924,6 +1005,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       setFormData(prev => ({
         ...prev,
+        vehicleCategory: vehicleCategoryInput,
+        vehicleMake: vehicleMakeInput.trim(),
+        vehicleModel: vehicleModelInput.trim(),
+        vehicleYear: vehicleYearInput.trim(),
         vehicleMakeModel: vehicleDesc,
         notes: notesParts.join(' | '),
         bookingPhotos
@@ -939,8 +1024,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       try {
         const rawPostal = postalCodeInput.trim() || formData.confirmedPostalCode || formData.postalCode || formData.googlePostalCode || '';
+        const fullVehicleName = `${vehicleMakeInput.trim()} ${vehicleModelInput.trim()} ${vehicleYearInput.trim()}`.trim();
+
         const finalSubmissionData = {
           ...formData,
+          vehicleCategory: vehicleCategoryInput,
+          vehicleMake: vehicleMakeInput.trim(),
+          vehicleModel: vehicleModelInput.trim(),
+          vehicleYear: vehicleYearInput.trim(),
+          vehicleMakeModel: fullVehicleName || formData.vehicleMakeModel,
+          bookingPhotos,
           clientName: clientName.trim() || formData.clientName,
           clientPhone: phoneInput.trim() || formData.clientPhone,
           clientEmail: clientEmail.trim() || formData.clientEmail,
@@ -1708,7 +1801,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <span>Prestations dans votre panier ({cart.items.length})</span>
                   </h4>
 
-                  {isAutoPromoActive() && hasAutoInCart && (
+                  {!WINTER_MODE && isAutoPromoActive() && hasAutoInCart && (
                     <span className="text-[10px] font-mono font-bold bg-[#DC2626]/20 text-[#FCA5A5] border border-[#DC2626]/40 px-2 py-0.5 rounded-full flex items-center gap-1">
                       <Flame className="w-3 h-3 text-[#F97316]" />
                       <span>{AUTO_LAUNCH_PROMO.badgeText[currentLang] || AUTO_LAUNCH_PROMO.badgeText.fr}</span>
@@ -1734,7 +1827,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                               <span className="text-xs font-bold text-white truncate">
                                 {item.name[currentLang] || item.name.fr}
                               </span>
-                              {isAuto && isAutoPromoActive() && (
+                              {!WINTER_MODE && isAuto && isAutoPromoActive() && (
                                 <span className="text-[9px] font-mono font-bold bg-[#22C55E]/20 text-[#86EFAC] px-1.5 py-0.2 rounded">
                                   -20 $ PROMO
                                 </span>
@@ -1804,7 +1897,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         + {f.name[currentLang] || f.name.fr} ({f.price} $)
                       </button>
                     ))}
-                    {EXTRA_SERVICES.map((extra) => {
+                    {(WINTER_MODE ? EXTRA_SERVICES.filter(e => e.id !== 'child_seat' && e.id !== 'heavy_dirt') : EXTRA_SERVICES).map((extra) => {
                       const isAdded = cart.items.some(it => it.id === extra.id);
                       const durBadge = extra.durationHours === 0.5 ? '+30 min' : `+${extra.durationHours} h`;
                       return (
@@ -1853,23 +1946,119 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
               </div>
 
-              {/* Dynamic Category Specific Inputs */}
-              {hasAutoInCart && (
-                <div>
-                  <label className="block text-xs font-mono font-bold text-[#D1D5DB] mb-1.5 uppercase">
-                    Modèle du véhicule (Marque, modèle, année) *
-                  </label>
-                  <input
-                    id="booking-field-vehicle-desc"
-                    type="text"
-                    value={vehicleMakeModelInput}
-                    onChange={(e) => {
-                      setVehicleMakeModelInput(e.target.value);
-                      if (validationError?.field === 'vehicleMakeModel') setValidationError(null);
-                    }}
-                    placeholder="ex: Toyota RAV4 2022"
-                    className="w-full bg-[#080E0A] rounded-xl px-4 py-2.5 text-sm text-white border border-[#203926] focus:border-[#22C55E] focus:outline-none"
-                  />
+              {/* Mandatory Vehicle Details when Auto or Truck is in cart */}
+              {!WINTER_MODE && (hasAutoInCart || hasTruckInCart || ['auto', 'suv', 'truck_van', 'heavy_truck', 'rv'].includes(vehicleCategoryInput)) && (
+                <div className="p-4 rounded-xl bg-[#0C1A10] border border-[#1E3E25] space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-mono font-bold text-[#86EFAC] uppercase tracking-wider flex items-center gap-2">
+                      <Car className="w-4 h-4 text-[#22C55E]" />
+                      <span>
+                        {currentLang === 'fr' 
+                          ? 'Informations obligatoires sur le véhicule' 
+                          : currentLang === 'ua'
+                          ? 'Обовʼязкова інформація про авто'
+                          : 'Mandatory Vehicle Information'}
+                      </span>
+                    </h4>
+                    <span className="text-[10px] text-red-400 font-mono font-bold">* Requis</span>
+                  </div>
+
+                  {/* 1. Category / Type */}
+                  <div>
+                    <label className="block text-[11px] font-mono font-bold text-[#D1D5DB] mb-1.5 uppercase">
+                      {currentLang === 'fr' ? '1. Catégorie de véhicule *' : currentLang === 'ua' ? '1. Категорія авто *' : '1. Vehicle Category *'}
+                    </label>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      {[
+                        { id: 'auto', label: currentLang === 'fr' ? 'Auto / Berline' : currentLang === 'ua' ? 'Легкове / Седан' : 'Sedan' },
+                        { id: 'suv', label: currentLang === 'fr' ? 'VUS / SUV' : currentLang === 'ua' ? 'Кросовер / VUS' : 'SUV' },
+                        { id: 'truck_van', label: currentLang === 'fr' ? 'Camionnette / Van' : currentLang === 'ua' ? 'Пікап / Вен' : 'Pickup / Van' }
+                      ].map(cat => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setVehicleCategoryInput(cat.id as any)}
+                          className={`py-2 px-2 rounded-lg border text-center transition-all cursor-pointer font-bold text-[11px] sm:text-xs truncate ${
+                            vehicleCategoryInput === cat.id
+                              ? 'bg-[#1C3E25] border-[#22C55E] text-[#86EFAC]'
+                              : 'bg-[#080E0A] border-[#1E3823] text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 2. Make, Model, Year */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Make */}
+                    <div>
+                      <label className="block text-[11px] font-mono font-bold text-[#D1D5DB] mb-1 uppercase">
+                        {currentLang === 'fr' ? '2. Marque *' : currentLang === 'ua' ? '2. Марка авто *' : '2. Make *'}
+                      </label>
+                      <input
+                        id="booking-field-vehicle-make"
+                        type="text"
+                        value={vehicleMakeInput}
+                        onChange={(e) => {
+                          setVehicleMakeInput(e.target.value);
+                          if (validationError?.field === 'vehicleMake') setValidationError(null);
+                        }}
+                        placeholder="ex: Toyota, Honda, Ford"
+                        className={`w-full bg-[#080E0A] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none transition-all ${
+                          validationError?.field === 'vehicleMake'
+                            ? 'border-2 border-red-500 bg-red-950/20'
+                            : 'border border-[#203926] focus:border-[#22C55E]'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Model */}
+                    <div>
+                      <label className="block text-[11px] font-mono font-bold text-[#D1D5DB] mb-1 uppercase">
+                        {currentLang === 'fr' ? '3. Modèle *' : currentLang === 'ua' ? '3. Модель *' : '3. Model *'}
+                      </label>
+                      <input
+                        id="booking-field-vehicle-model"
+                        type="text"
+                        value={vehicleModelInput}
+                        onChange={(e) => {
+                          setVehicleModelInput(e.target.value);
+                          if (validationError?.field === 'vehicleModel') setValidationError(null);
+                        }}
+                        placeholder="ex: RAV4, Civic, F-150"
+                        className={`w-full bg-[#080E0A] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none transition-all ${
+                          validationError?.field === 'vehicleModel'
+                            ? 'border-2 border-red-500 bg-red-950/20'
+                            : 'border border-[#203926] focus:border-[#22C55E]'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Year */}
+                    <div>
+                      <label className="block text-[11px] font-mono font-bold text-[#D1D5DB] mb-1 uppercase">
+                        {currentLang === 'fr' ? '4. Année *' : currentLang === 'ua' ? '4. Рік випуску *' : '4. Year *'}
+                      </label>
+                      <input
+                        id="booking-field-vehicle-year"
+                        type="text"
+                        maxLength={4}
+                        value={vehicleYearInput}
+                        onChange={(e) => {
+                          setVehicleYearInput(e.target.value.replace(/\D/g, ''));
+                          if (validationError?.field === 'vehicleYear') setValidationError(null);
+                        }}
+                        placeholder="ex: 2022"
+                        className={`w-full bg-[#080E0A] rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none transition-all ${
+                          validationError?.field === 'vehicleYear'
+                            ? 'border-2 border-red-500 bg-red-950/20'
+                            : 'border border-[#203926] focus:border-[#22C55E]'
+                        }`}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -2083,7 +2272,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       {currentLang === 'fr' ? 'Photos (facultatif)' : currentLang === 'ua' ? 'Фото (необов’язково)' : 'Photos (optional)'}
                     </label>
                     <p className="text-[11px] text-[#9CA3AF] mt-1">
-                      {currentLang === 'fr' ? 'Ajoutez jusqu’à 5 photos des taches, du tapis, du sofa, du matelas ou du véhicule.' : currentLang === 'ua' ? 'Додайте до 5 фото плям, килима, дивана, матраца або авто.' : 'Add up to 5 photos of stains, carpet, sofa, mattress or vehicle.'}
+                      {WINTER_MODE
+                        ? (currentLang === 'fr' ? 'Ajoutez jusqu’à 5 photos des taches, du tapis, du sofa ou du matelas.' : currentLang === 'ua' ? 'Додайте до 5 фото плям, килима, дивана або матраца.' : 'Add up to 5 photos of stains, carpet, sofa or mattress.')
+                        : (currentLang === 'fr' ? 'Ajoutez jusqu’à 5 photos des taches, du tapis, du sofa, du matelas ou du véhicule.' : currentLang === 'ua' ? 'Додайте до 5 фото плям, килима, дивана, матраца або авто.' : 'Add up to 5 photos of stains, carpet, sofa, mattress or vehicle.')}
                     </p>
                   </div>
                   <label className="shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#122616] border border-[#22C55E]/50 text-[#86EFAC] text-xs font-bold cursor-pointer">
@@ -2113,7 +2304,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   value={formData.notes}
                   onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                   rows={2}
-                  placeholder="ex: Prise électrique disponible, tache de café sur siège passager..."
+                  placeholder={WINTER_MODE
+                    ? 'ex: Prise électrique disponible, tache de café sur le sofa...'
+                    : 'ex: Prise électrique disponible, tache de café sur siège passager...'}
                   className="w-full bg-[#080E0A] rounded-xl p-3 text-xs text-white border border-[#203926] focus:border-[#22C55E] focus:outline-none"
                 />
               </div>
@@ -2151,6 +2344,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </div>
                 </div>
 
+                {/* Vehicle Details */}
+                {!WINTER_MODE && (hasAutoInCart || hasTruckInCart || vehicleMakeInput || vehicleModelInput) && (
+                  <div className="p-3 rounded-lg bg-[#071109] border border-[#162C1B] text-xs space-y-1">
+                    <div className="text-[10px] text-[#9CA3AF] uppercase font-mono">Véhicule renseigné</div>
+                    <div className="text-white font-bold text-sm">
+                      {vehicleMakeInput} {vehicleModelInput} {vehicleYearInput ? `(${vehicleYearInput})` : ''}
+                    </div>
+                    <div className="text-[11px] text-[#86EFAC] font-mono">
+                      Catégorie : {vehicleCategoryInput === 'suv' ? 'VUS / SUV' : vehicleCategoryInput === 'truck_van' ? 'Camionnette / Van' : 'Auto / Berline'}
+                    </div>
+                  </div>
+                )}
+
                 {/* Services List */}
                 <div className="space-y-2 pt-2 border-t border-[#18341E]">
                   <div className="text-[10px] text-[#9CA3AF] uppercase font-mono">Prestations sélectionnées ({cart.items.length})</div>
@@ -2162,8 +2368,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   ))}
                 </div>
 
+                {/* Estimated Duration */}
+                <div className="flex justify-between items-center text-xs text-[#9CA3AF] pt-2 border-t border-[#18341E]">
+                  <span>{currentLang === 'fr' ? 'Durée totale estimée :' : currentLang === 'ua' ? 'Орієнтовний час :' : 'Estimated total duration :'}</span>
+                  <span className="font-mono text-[#86EFAC] font-bold">
+                    {cart.estimatedDuration[currentLang] || cart.estimatedDuration.fr}
+                  </span>
+                </div>
+
                 {/* Total */}
-                <div className="pt-3 border-t border-[#18341E] flex justify-between items-center text-base font-bold">
+                <div className="pt-2 border-t border-[#18341E] flex justify-between items-center text-base font-bold">
                   <span className="text-white">Total estimé :</span>
                   <span className="text-xl font-mono font-black text-[#22C55E]">{finalAdjustedTotal} $ CAD</span>
                 </div>

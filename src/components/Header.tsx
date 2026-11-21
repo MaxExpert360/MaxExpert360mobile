@@ -15,6 +15,7 @@ import {
 import { MaxLogo } from './MaxLogo';
 import { DYNASTIE_INFO } from '../data/dynastieData';
 import { Language } from '../types';
+import { WINTER_MODE } from '../config/winterMode';
 
 interface HeaderProps {
   currentLang: Language;
@@ -39,7 +40,9 @@ export const Header: React.FC<HeaderProps> = ({
 
   useEffect(() => {
     const handleScroll = () => {
-      const sectionIds = ['contact', 'tarifs', 'avis', 'avant-apres', 'taches-difficiles', 'services', 'accueil'];
+      const sectionIds = WINTER_MODE
+        ? ['contact', 'tarifs', 'avis', 'taches-difficiles', 'services', 'accueil']
+        : ['contact', 'tarifs', 'avis', 'avant-apres', 'taches-difficiles', 'services', 'accueil'];
       const scrollPos = window.scrollY + 120;
       
       for (const id of sectionIds) {
@@ -184,16 +187,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             {t.difficultStains}
           </a>
-          <a 
-            href="#avant-apres" 
-            className={`transition-colors py-1 border-b-2 ${
-              activeSection === 'avant-apres'
-                ? 'text-[#16A34A] border-[#16A34A]'
-                : 'text-[#335643] border-transparent hover:text-[#16A34A]'
-            }`}
-          >
-            {t.beforeAfter}
-          </a>
+          {!WINTER_MODE && (
+            <a 
+              href="#avant-apres" 
+              className={`transition-colors py-1 border-b-2 ${
+                activeSection === 'avant-apres'
+                  ? 'text-[#16A34A] border-[#16A34A]'
+                  : 'text-[#335643] border-transparent hover:text-[#16A34A]'
+              }`}
+            >
+              {t.beforeAfter}
+            </a>
+          )}
           <a 
             href="#avis" 
             className={`transition-colors py-1 border-b-2 ${
@@ -363,18 +368,20 @@ export const Header: React.FC<HeaderProps> = ({
               <span>{t.difficultStains}</span>
               {activeSection === 'taches-difficiles' && <span className="w-2 h-2 rounded-full bg-[#16A34A]" />}
             </a>
-            <a 
-              href="#avant-apres" 
-              onClick={() => setMobileMenuOpen(false)}
-              className={`p-2.5 rounded-lg border transition-colors flex items-center justify-between ${
-                activeSection === 'avant-apres'
-                  ? 'bg-[#EAF6EE] border-[#16A34A] text-[#16A34A]'
-                  : 'bg-[#F8FCF9] border-[#E2F0E6] hover:border-[#16A34A] hover:text-[#16A34A]'
-              }`}
-            >
-              <span>{t.beforeAfter}</span>
-              {activeSection === 'avant-apres' && <span className="w-2 h-2 rounded-full bg-[#16A34A]" />}
-            </a>
+            {!WINTER_MODE && (
+              <a 
+                href="#avant-apres" 
+                onClick={() => setMobileMenuOpen(false)}
+                className={`p-2.5 rounded-lg border transition-colors flex items-center justify-between ${
+                  activeSection === 'avant-apres'
+                    ? 'bg-[#EAF6EE] border-[#16A34A] text-[#16A34A]'
+                    : 'bg-[#F8FCF9] border-[#E2F0E6] hover:border-[#16A34A] hover:text-[#16A34A]'
+                }`}
+              >
+                <span>{t.beforeAfter}</span>
+                {activeSection === 'avant-apres' && <span className="w-2 h-2 rounded-full bg-[#16A34A]" />}
+              </a>
+            )}
             <a 
               href="#avis" 
               onClick={() => setMobileMenuOpen(false)}

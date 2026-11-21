@@ -11,6 +11,7 @@ import { smsService } from './server/smsService';
 import { reviewsDb } from './server/reviewsDb';
 import { validateBookingSchedule } from './server/bookingSchedule';
 import { geminiChatService } from './server/geminiChatService';
+import { cloudStorageService } from './server/cloudStorage';
 
 dotenv.config();
 
@@ -55,6 +56,17 @@ async function startServer() {
 
   // JSON request body parser (supports large payloads if needed)
   app.use(express.json({ limit: '50mb' }));
+
+  // Static uploads directory for client photos
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    try {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    } catch (err) {
+      console.warn('[Server] Could not create uploads directory:', err);
+    }
+  }
+  app.use('/uploads', express.static(uploadsDir));
 
   // ================= API ROUTES =================
 
@@ -1055,6 +1067,56 @@ async function startServer() {
   app.post('/api/square/create-booking', async (req, res) => {
     try {
       const result = await squareBookingsService.createSquareBooking(req.body);
+
+      // Persist client booking photos & metadata to persistent Google Cloud Storage
+      if (result.bookingId) {
+        if (Array.isArray(req.body?.bookingPhotos) && req.body.bookingPhotos.length > 0) {
+          for (let i = 0; i < req.body.bookingPhotos.length; i++) {
+            const photoItem = req.body.bookingPhotos[i];
+            if (typeof photoItem === 'string' && photoItem.startsWith('data:image')) {
+              await cloudStorageService.uploadPhoto(result.bookingId, photoItem).catch(e => {
+                console.warn('[SquareBooking] GCS photo upload warning:', e.message);
+              });
+            }
+          }
+
+          // Also mirror in local cache
+          const photoMapFile = path.join(process.cwd(), 'data', 'booking_photos.json');
+          let map: Record<string, string[]> = {};
+          if (fs.existsSync(photoMapFile)) {
+            try {
+              map = JSON.parse(fs.readFileSync(photoMapFile, 'utf-8'));
+            } catch {
+              map = {};
+            }
+          }
+          map[result.bookingId] = Array.from(new Set([...(map[result.bookingId] || []), ...req.body.bookingPhotos]));
+          try {
+            fs.writeFileSync(photoMapFile, JSON.stringify(map, null, 2), 'utf-8');
+          } catch {}
+        }
+
+        // Save complete booking metadata to GCS to survive Cloud Run redeployments
+        await cloudStorageService.saveBookingMetadata(result.bookingId, {
+          bookingId: result.bookingId,
+          status: result.status,
+          createdAt: result.createdAt || new Date().toISOString(),
+          clientName: req.body?.clientName,
+          clientPhone: req.body?.clientPhone,
+          clientEmail: req.body?.clientEmail,
+          serviceAddress: req.body?.serviceAddress,
+          postalCode: req.body?.postalCode || req.body?.confirmedPostalCode,
+          preferredDate: req.body?.preferredDate,
+          preferredTimeSlot: req.body?.preferredTimeSlot,
+          vehicleMake: req.body?.vehicleMake,
+          vehicleModel: req.body?.vehicleModel,
+          vehicleYear: req.body?.vehicleYear,
+          vehicleCategory: req.body?.vehicleCategory,
+          totalPrice: result.totalPrice,
+          cartItems: req.body?.cart?.items || []
+        }).catch(e => console.warn('[SquareBooking] GCS metadata save warning:', e.message));
+      }
+
       res.json(result);
     } catch (err: any) {
       console.error('[Create Booking Error]:', err.message);
@@ -1065,6 +1127,533 @@ async function startServer() {
         diagnostic: err.diagnostic || null
       });
     }
+  });
+
+  // ================= CLIENT PHOTOS UPLOAD & SECURE GCS STORAGE =================
+  
+  // Upload client photos to Google Cloud Storage (with local fallback if offline)
+  app.post('/api/upload-photos', async (req, res) => {
+    try {
+      const { photos, bookingId } = req.body;
+      if (!photos || !Array.isArray(photos)) {
+        return res.status(400).json({ success: false, error: 'Une liste de photos est requise.' });
+      }
+
+      const effectiveBookingId = (bookingId && typeof bookingId === 'string' && bookingId.trim()) 
+        ? bookingId.trim() 
+        : `temp_${Date.now()}`;
+      const token = cloudStorageService.generateAccessToken(effectiveBookingId);
+
+      const uploadedResults: Array<{ photoKey: string; secureUrl: string; storageType: string }> = [];
+
+      for (let i = 0; i < photos.length; i++) {
+        const item = photos[i];
+        if (typeof item !== 'string') continue;
+
+        if (item.startsWith('data:image')) {
+          const uploaded = await cloudStorageService.uploadPhoto(effectiveBookingId, item);
+          const secureUrl = `/api/photos/${encodeURIComponent(effectiveBookingId)}/${encodeURIComponent(uploaded.photoKey)}?token=${token}`;
+          uploadedResults.push({
+            photoKey: uploaded.photoKey,
+            secureUrl,
+            storageType: uploaded.storageType
+          });
+        } else if (item.startsWith('/api/photos/') || item.startsWith('/uploads/')) {
+          const key = path.basename(item.split('?')[0]);
+          const secureUrl = `/api/photos/${encodeURIComponent(effectiveBookingId)}/${encodeURIComponent(key)}?token=${token}`;
+          uploadedResults.push({
+            photoKey: key,
+            secureUrl,
+            storageType: cloudStorageService.isAvailable() ? 'gcs' : 'local'
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        count: uploadedResults.length,
+        bookingId: effectiveBookingId,
+        token,
+        urls: uploadedResults.map(u => u.secureUrl),
+        keys: uploadedResults.map(u => u.photoKey),
+        isGcsPersistent: cloudStorageService.isAvailable()
+      });
+    } catch (err: any) {
+      console.error('[UploadPhotos Error]:', err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Secure Streaming Route: Stream photo from private GCS bucket (Token required)
+  app.get('/api/photos/:bookingId/:photoKey', async (req, res) => {
+    try {
+      const { bookingId, photoKey } = req.params;
+      const token = (req.query.token as string) || '';
+
+      // Validate HMAC security token
+      if (!cloudStorageService.verifyAccessToken(bookingId, token)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Accès non autorisé. Jeton de sécurité manquant ou invalide.'
+        });
+      }
+
+      const asDownload = req.query.download === '1' || req.query.download === 'true';
+      const streamed = await cloudStorageService.streamPhoto(bookingId, photoKey, res, asDownload);
+
+      if (!streamed && !res.headersSent) {
+        res.status(404).json({
+          success: false,
+          error: 'Photo introuvable.'
+        });
+      }
+    } catch (err: any) {
+      console.error('[StreamPhoto Error]:', err.message);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: 'Erreur lors du chargement de la photo.' });
+      }
+    }
+  });
+
+  // Get photo keys and metadata for a booking (Protected)
+  app.get('/api/bookings/:bookingId/photos', async (req, res) => {
+    try {
+      const { bookingId } = req.params;
+      const token = (req.query.token as string) || '';
+
+      // Check token or admin key
+      if (!cloudStorageService.verifyAccessToken(bookingId, token)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Accès non autorisé. Jeton de sécurité manquant ou invalide.'
+        });
+      }
+
+      const photos = await cloudStorageService.listBookingPhotos(bookingId);
+      const safeToken = token || cloudStorageService.generateAccessToken(bookingId);
+
+      res.json({
+        success: true,
+        bookingId,
+        count: photos.length,
+        photos: photos.map(p => ({
+          photoKey: p.photoKey,
+          contentType: p.contentType,
+          uploadedAt: p.uploadedAt,
+          storageType: p.storageType,
+          url: `/api/photos/${encodeURIComponent(bookingId)}/${encodeURIComponent(p.photoKey)}?token=${safeToken}`,
+          downloadUrl: `/api/photos/${encodeURIComponent(bookingId)}/${encodeURIComponent(p.photoKey)}?token=${safeToken}&download=1`
+        }))
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Protected Owner Photo Gallery Page for Twilio SMS links (https://maxexpert360.ca/photos/:bookingId?token=...)
+  app.get('/photos/:bookingId', async (req, res) => {
+    const { bookingId } = req.params;
+    const token = (req.query.token as string) || '';
+
+    // STRICT SECURITY: Check HMAC access token
+    const isAuthorized = cloudStorageService.verifyAccessToken(bookingId, token);
+    if (!isAuthorized) {
+      return res.status(403).send(`
+        <!DOCTYPE html>
+        <html lang="fr-CA">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Accès Sécurisé · MAX EXPERT 360 MOBILE</title>
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              background: #081711;
+              color: #f3f4f6;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 24px;
+            }
+            .card {
+              background: #0d231a;
+              border: 1px solid #7f1d1d;
+              border-radius: 16px;
+              padding: 36px 30px;
+              max-width: 560px;
+              width: 100%;
+              box-shadow: 0 20px 45px rgba(0,0,0,0.6);
+              text-align: center;
+            }
+            .icon { font-size: 48px; margin-bottom: 16px; }
+            .badge {
+              display: inline-block;
+              background: rgba(239, 68, 68, 0.15);
+              color: #f87171;
+              border: 1px solid rgba(239, 68, 68, 0.3);
+              font-size: 11px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              padding: 4px 12px;
+              border-radius: 20px;
+              margin-bottom: 14px;
+            }
+            h1 {
+              color: #ffffff;
+              font-size: 22px;
+              font-weight: 800;
+              margin-bottom: 12px;
+            }
+            p {
+              color: #9ca3af;
+              font-size: 14px;
+              line-height: 1.6;
+              margin-bottom: 20px;
+            }
+            .box {
+              background: #070e0a;
+              border: 1px solid #1f3b2c;
+              border-radius: 10px;
+              padding: 16px;
+              font-size: 13px;
+              color: #d1d5db;
+              text-align: left;
+              margin-bottom: 24px;
+              line-height: 1.5;
+            }
+            .btn {
+              display: inline-block;
+              background: #eab308;
+              color: #000;
+              font-weight: 700;
+              font-size: 14px;
+              text-decoration: none;
+              padding: 12px 24px;
+              border-radius: 8px;
+              transition: opacity 0.2s;
+            }
+            .btn:hover { opacity: 0.9; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="icon">🔒</div>
+            <div class="badge">Google Cloud Storage · Accès Privé</div>
+            <h1>Galerie photo privée et protégée</h1>
+            <p>L'accès aux photos du rendez-vous <strong>#${bookingId}</strong> est strictement réservé au propriétaire et requiert un jeton de sécurité HMAC valide.</p>
+            <div class="box">
+              <strong>Instructions pour le propriétaire :</strong><br>
+              Veuillez ouvrir le lien complet reçu par <strong>SMS Twilio</strong> sur votre cellulaire. Ce lien contient la clé cryptographique temporaire autorisant la consultation des clichés haute définition.
+            </div>
+            <a href="https://maxexpert360.ca" class="btn">Retour au site MAX EXPERT 360</a>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    // Load photos from private GCS (or fallback)
+    const photos = await cloudStorageService.listBookingPhotos(bookingId);
+
+    // Retrieve metadata from GCS or customer database
+    const gcsMeta = await cloudStorageService.getBookingMetadata(bookingId);
+    const found = customerDb.findBookingById(bookingId);
+
+    const clientName = gcsMeta?.clientName || found?.customer?.name || 'Client';
+    const clientPhone = gcsMeta?.clientPhone || found?.customer?.phone || '';
+    const bookingDate = gcsMeta?.preferredDate || found?.booking?.date || '';
+    const services = gcsMeta?.cartItems?.map((it: any) => typeof it.name === 'object' ? (it.name.fr || it.name.en) : it.name).join(', ') || found?.booking?.servicesSummary || '';
+    const vehicleInfo = [gcsMeta?.vehicleMake, gcsMeta?.vehicleModel, gcsMeta?.vehicleYear].filter(Boolean).join(' ') || '';
+
+    const photoCardsHtml = photos.length > 0
+      ? photos.map((p, idx) => {
+        const viewUrl = `/api/photos/${encodeURIComponent(bookingId)}/${encodeURIComponent(p.photoKey)}?token=${encodeURIComponent(token)}`;
+        const downloadUrl = `/api/photos/${encodeURIComponent(bookingId)}/${encodeURIComponent(p.photoKey)}?token=${encodeURIComponent(token)}&download=1`;
+        return `
+        <div class="photo-card">
+          <div class="photo-wrapper" onclick="openModal('${viewUrl}')">
+            <img src="${viewUrl}" alt="Photo ${idx + 1}" loading="lazy" />
+            <div class="zoom-hint">🔍 Agrandir</div>
+          </div>
+          <div class="photo-footer">
+            <span class="photo-num">Photo ${idx + 1} sur ${photos.length}</span>
+            <a href="${downloadUrl}" class="download-btn">⬇ Télécharger</a>
+          </div>
+        </div>
+      `;
+      }).join('\n')
+      : `
+        <div class="empty-box">
+          <div style="font-size: 44px; margin-bottom: 12px;">📷</div>
+          <h3>Aucune photo transmise</h3>
+          <p>Le client n'a pas joint de photos pour ce rendez-vous lors de sa réservation en ligne.</p>
+        </div>
+      `;
+
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="fr-CA">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+        <title>Galerie Privée Rendez-vous #${bookingId} | MAX EXPERT 360 MOBILE</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #081711;
+            color: #f3f4f6;
+            min-height: 100vh;
+            padding: 20px 16px 40px;
+          }
+          .container {
+            max-width: 960px;
+            margin: 0 auto;
+          }
+          header {
+            background: linear-gradient(135deg, #103e31, #17634a);
+            border-radius: 14px;
+            padding: 22px 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+          }
+          .brand-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 8px;
+          }
+          .brand {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #eab308;
+          }
+          .storage-badge {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid #22c55e;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+          }
+          h1 {
+            font-size: clamp(20px, 4vw, 26px);
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 14px;
+          }
+          .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            background: rgba(0,0,0,0.28);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 13.5px;
+          }
+          .meta-item strong {
+            color: #93c5fd;
+          }
+          .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+          }
+          .photo-card {
+            background: #0d231a;
+            border: 1px solid #1a4332;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+          }
+          .photo-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+          }
+          .photo-wrapper {
+            position: relative;
+            aspect-ratio: 4/3;
+            background: #040906;
+            cursor: pointer;
+            overflow: hidden;
+          }
+          .photo-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.3s;
+          }
+          .photo-wrapper:hover img {
+            transform: scale(1.04);
+          }
+          .zoom-hint {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.75);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            pointer-events: none;
+          }
+          .photo-footer {
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0a1c14;
+            border-top: 1px solid #1a4332;
+          }
+          .photo-num {
+            font-size: 13px;
+            color: #9ca3af;
+          }
+          .download-btn {
+            background: #eab308;
+            color: #000;
+            font-weight: 700;
+            font-size: 13px;
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            transition: background 0.15s;
+          }
+          .download-btn:hover {
+            background: #facc15;
+          }
+          .empty-box {
+            text-align: center;
+            padding: 60px 20px;
+            background: #0d231a;
+            border: 1px dashed #1a4332;
+            border-radius: 12px;
+            grid-column: 1 / -1;
+          }
+          .empty-box h3 {
+            color: #e5e7eb;
+            margin-bottom: 8px;
+          }
+          .empty-box p {
+            color: #9ca3af;
+            font-size: 14px;
+            max-width: 440px;
+            margin: 0 auto;
+          }
+          .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            color: #4ade80;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+          }
+          .back-link:hover {
+            text-decoration: underline;
+          }
+          /* Fullscreen Lightbox Modal */
+          #modal {
+            display: none;
+            position: fixed;
+            z-index: 99999;
+            inset: 0;
+            background: rgba(0,0,0,0.94);
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+          }
+          #modal.open {
+            display: flex;
+          }
+          #modal img {
+            max-width: 95vw;
+            max-height: 90vh;
+            border-radius: 8px;
+            object-fit: contain;
+            box-shadow: 0 0 35px rgba(0,0,0,0.85);
+          }
+          .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #ef4444;
+            color: #fff;
+            border: none;
+            font-size: 18px;
+            font-weight: 700;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <header>
+            <div class="brand-row">
+              <div class="brand">MAX EXPERT 360 MOBILE · Galerie privée</div>
+              <div class="storage-badge">🔒 Google Cloud Storage Privé</div>
+            </div>
+            <h1>Photos du rendez-vous #${bookingId}</h1>
+            <div class="meta-grid">
+              ${clientName ? `<div class="meta-item">Client : <strong>${clientName}</strong></div>` : ''}
+              ${clientPhone ? `<div class="meta-item">Tél : <strong>${clientPhone}</strong></div>` : ''}
+              ${bookingDate ? `<div class="meta-item">Date : <strong>${bookingDate}</strong></div>` : ''}
+              ${vehicleInfo ? `<div class="meta-item">Véhicule : <strong>${vehicleInfo}</strong></div>` : ''}
+              ${services ? `<div class="meta-item">Prestation : <strong>${services}</strong></div>` : ''}
+              <div class="meta-item">Total photos : <strong>${photos.length}</strong></div>
+            </div>
+          </header>
+
+          <main class="grid">
+            ${photoCardsHtml}
+          </main>
+
+          <div style="text-align: center;">
+            <a href="https://maxexpert360.ca" class="back-link">← Retour au site MAX EXPERT 360</a>
+          </div>
+        </div>
+
+        <div id="modal" onclick="closeModal()">
+          <button class="close-modal" onclick="closeModal()">✕</button>
+          <img id="modalImg" src="" alt="Agrandissement" onclick="event.stopPropagation()" />
+        </div>
+
+        <script>
+          function openModal(src) {
+            document.getElementById('modalImg').src = src;
+            document.getElementById('modal').classList.add('open');
+          }
+          function closeModal() {
+            document.getElementById('modal').classList.remove('open');
+          }
+          document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+          });
+        </script>
+      </body>
+      </html>
+    `);
   });
 
   // ================= VITE / STATIC SERVING =================

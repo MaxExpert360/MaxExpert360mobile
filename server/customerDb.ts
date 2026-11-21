@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { cloudStorageService } from './cloudStorage';
 
 export interface CustomerAddressBreakdown {
   formattedAddress: string;
@@ -199,6 +200,26 @@ export class CustomerDatabase {
         }
       }
       this.isLoaded = true;
+
+      // In Cloud Run, if local file was missing or empty, attempt restoring from persistent GCS
+      if (this.customers.size === 0) {
+        cloudStorageService.restoreCustomersFromStorage().then(remoteList => {
+          if (Array.isArray(remoteList) && remoteList.length > 0) {
+            for (const cust of remoteList) {
+              const norm = this.normalizePhone(cust.normalizedPhone || cust.phone);
+              if (norm && !this.customers.has(norm)) {
+                cust.normalizedPhone = norm;
+                this.customers.set(norm, cust);
+              }
+            }
+            try {
+              fs.writeFileSync(this.dataFilePath, JSON.stringify(Array.from(this.customers.values()), null, 2), 'utf-8');
+            } catch {}
+          }
+        }).catch(err => {
+          console.warn('[CustomerDb] GCS initial restore notice:', err.message);
+        });
+      }
     } catch (err) {
       console.error('Error loading customer database from disk:', err);
       this.customers = new Map();
@@ -210,6 +231,8 @@ export class CustomerDatabase {
     try {
       const list = Array.from(this.customers.values());
       fs.writeFileSync(this.dataFilePath, JSON.stringify(list, null, 2), 'utf-8');
+      // Mirror to persistent GCS asynchronously
+      cloudStorageService.backupCustomersToStorage(list).catch(() => {});
     } catch (err) {
       console.error('Error saving customer database to disk:', err);
     }
@@ -340,6 +363,16 @@ export class CustomerDatabase {
     customer.lastBookingDate = booking.date;
     customer.updatedAt = new Date().toISOString();
     this.saveToDisk();
+
+    // Mirror booking metadata into persistent GCS object
+    cloudStorageService.saveBookingMetadata(booking.bookingId, {
+      ...newRecord,
+      customerName: customer.name,
+      customerPhone: customer.phone,
+      customerAddress: customer.primaryAddress,
+      postalCode: customer.postalCode
+    }).catch(e => console.warn('[CustomerDb] GCS saveBookingMetadata error:', e.message));
+
     return customer;
   }
 
@@ -425,6 +458,20 @@ export class CustomerDatabase {
 
   public getAllCustomers(): CustomerProfile[] {
     return Array.from(this.customers.values());
+  }
+
+  public findBookingById(bookingId: string): { customer: CustomerProfile; booking: CustomerBookingRecord } | null {
+    if (!bookingId) return null;
+    const cleanId = bookingId.trim().toLowerCase();
+    for (const customer of this.customers.values()) {
+      const b = (customer.bookingHistory || []).find(
+        item => item.bookingId && item.bookingId.trim().toLowerCase() === cleanId
+      );
+      if (b) {
+        return { customer, booking: b };
+      }
+    }
+    return null;
   }
 }
 

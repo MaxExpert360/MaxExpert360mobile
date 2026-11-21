@@ -20,6 +20,10 @@ export interface BookingRequestInput {
   preferredDate: string; // YYYY-MM-DD
   preferredTimeSlot: string;
   vehicleMakeModel?: string;
+  vehicleMake?: string;
+  vehicleModel?: string;
+  vehicleYear?: string;
+  vehicleCategory?: string;
   notes?: string;
   bookingPhotos?: string[];
   cart: {
@@ -838,9 +842,55 @@ export class SquareBookingsService {
     ]);
 
     // Primary bookable team member ID (e.g. Maksym Dmytruk TMFJ6AiDibVJenrB)
+    // Primary bookable team member ID (e.g. Maksym Dmytruk TMFJ6AiDibVJenrB)
     const primaryTeamMemberId = teamMembers.find(t => t.isBookable)?.id || teamMembers[0]?.id || 'TMFJ6AiDibVJenrB';
 
-    // 4. Calculate appointment segments with exact Square variation ID, version, and team member ID
+    // 4. Calculate appointment segments and itemized breakdown
+    // CRITICAL: Prevent adding fake car wash segments for add-ons (pet hair, stains, odor, child seat).
+    // Instead, assign the full appointment duration in minutes to the primary service segment.
+    const isExtraItem = (item: any) => {
+      const id = String(item.id || item.serviceId || '').toLowerCase();
+      const cat = String(item.category || '').toLowerCase();
+      return (
+        cat === 'extra' ||
+        cat === 'addon' ||
+        id.startsWith('extra_') ||
+        id.startsWith('stain_') ||
+        id.startsWith('odor_') ||
+        ['pet_hair', 'excessive_dirt', 'difficult_stains', 'stains', 'odor_neutralization', 'child_seat'].includes(id)
+      );
+    };
+
+    const mainItems = input.cart.items.filter(item => !isExtraItem(item));
+    const extraItems = input.cart.items.filter(item => isExtraItem(item));
+    const primaryItem = mainItems[0] || input.cart.items[0];
+
+    // Compute total duration in minutes
+    let totalJobMinutes = 0;
+    if (typeof (input.cart as any).durationMinutes === 'number' && (input.cart as any).durationMinutes > 0) {
+      totalJobMinutes = (input.cart as any).durationMinutes;
+    } else if ((input.cart as any).durationMinutesRange?.max) {
+      totalJobMinutes = (input.cart as any).durationMinutesRange.max;
+    } else {
+      let mainMin = 180;
+      if (primaryItem) {
+        const pId = String((primaryItem as any).id || '').toLowerCase();
+        if (pId.includes('express')) mainMin = 90;
+        else if (pId.includes('remise')) mainMin = 300;
+        else if (pId.includes('interieur')) mainMin = 150;
+        else mainMin = 180;
+      }
+      let extrasMin = 0;
+      for (const ex of extraItems) {
+        const exId = String((ex as any).id || '').toLowerCase();
+        const qty = ex.quantity || 1;
+        if (exId.includes('child_seat')) extrasMin += 30 * qty;
+        else extrasMin += 60 * qty;
+      }
+      totalJobMinutes = mainMin + extrasMin;
+    }
+    totalJobMinutes = Math.max(60, Math.min(480, totalJobMinutes));
+
     const segments: Array<{
       duration_minutes: number;
       service_variation_id: string;
@@ -848,30 +898,41 @@ export class SquareBookingsService {
       team_member_id: string;
     }> = [];
 
+    const extraServicesDetails: string[] = [];
     const itemNamesFormatted: string[] = [];
+    let mainPackageDisplayName = '';
 
-    for (const item of input.cart.items) {
-      const itemId = (item as any).id || (item as any).serviceId || '';
-      const itemCategory = (item as any).category || 'auto';
-      const resolved = resolveServiceVariation(itemId, itemCategory, liveCatalog, primaryTeamMemberId);
-      const segmentDuration = Math.max(30, (resolved.durationMinutes || 90) * (item.quantity || 1));
+    if (primaryItem) {
+      const pId = (primaryItem as any).id || (primaryItem as any).serviceId || '';
+      const pCat = input.vehicleCategory || (primaryItem as any).category || 'auto';
+      const resolvedPrimary = resolveServiceVariation(pId, pCat, liveCatalog, primaryTeamMemberId);
 
       const langKey = input.language || 'fr';
-      const displayName = typeof item.name === 'object' && item.name !== null
-        ? ((item.name as any)[langKey] || (item.name as any).fr || 'Service')
-        : (item.name || (item as any).serviceName || 'Service');
-      const itemPrice = item.totalPrice ?? (item as any).finalPrice ?? (item as any).basePrice ?? 0;
-      itemNamesFormatted.push(`${displayName} (x${item.quantity || 1}) - ${itemPrice} $`);
+      mainPackageDisplayName = typeof primaryItem.name === 'object' && primaryItem.name !== null
+        ? ((primaryItem.name as any)[langKey] || (primaryItem.name as any).fr || 'Service')
+        : (primaryItem.name || (primaryItem as any).serviceName || 'Service');
 
-      // Verify that team_member_id is bookable
-      const finalTeamMemberId = resolved.teamMemberId || primaryTeamMemberId;
+      itemNamesFormatted.push(`${mainPackageDisplayName} - ${primaryItem.totalPrice ?? (primaryItem as any).finalPrice ?? (primaryItem as any).basePrice ?? 0} $ CAD`);
 
       segments.push({
-        duration_minutes: segmentDuration,
-        service_variation_id: resolved.serviceVariationId,
-        service_variation_version: resolved.serviceVariationVersion || 1,
-        team_member_id: finalTeamMemberId
+        duration_minutes: totalJobMinutes,
+        service_variation_id: resolvedPrimary.serviceVariationId,
+        service_variation_version: resolvedPrimary.serviceVariationVersion || 1,
+        team_member_id: resolvedPrimary.teamMemberId || primaryTeamMemberId
       });
+    }
+
+    // Format extra items for itemized notes and SMS
+    for (const ex of extraItems) {
+      const langKey = input.language || 'fr';
+      const exName = typeof ex.name === 'object' && ex.name !== null
+        ? ((ex.name as any)[langKey] || (ex.name as any).fr || 'Option supplémentaire')
+        : (ex.name || 'Option supplémentaire');
+      const exPrice = ex.totalPrice ?? (ex as any).finalPrice ?? (ex as any).basePrice ?? 0;
+      const exQty = ex.quantity || 1;
+      const detailStr = `${exName} (x${exQty}) : +${exPrice} $ CAD`;
+      extraServicesDetails.push(detailStr);
+      itemNamesFormatted.push(detailStr);
     }
 
     // If for any reason no segments were created, build primary segment from catalog
@@ -879,7 +940,7 @@ export class SquareBookingsService {
       const fallbackVar = liveCatalog[0];
       if (fallbackVar) {
         segments.push({
-          duration_minutes: 120,
+          duration_minutes: totalJobMinutes || 180,
           service_variation_id: fallbackVar.id,
           service_variation_version: fallbackVar.version || 1,
           team_member_id: fallbackVar.teamMemberIds?.[0] || primaryTeamMemberId
@@ -896,19 +957,28 @@ export class SquareBookingsService {
     );
 
     const durationLabel = input.cart.estimatedDuration?.fr || input.cart.estimatedDuration?.en || '';
+    const vehicleDesc = [
+      input.vehicleCategory ? `Type : ${input.vehicleCategory}` : '',
+      input.vehicleMake ? `Marque : ${input.vehicleMake}` : '',
+      input.vehicleModel ? `Modèle : ${input.vehicleModel}` : '',
+      input.vehicleYear ? `Année : ${input.vehicleYear}` : '',
+      !input.vehicleMake && !input.vehicleModel && input.vehicleMakeModel ? `Véhicule/Meuble : ${input.vehicleMakeModel}` : ''
+    ].filter(Boolean).join(' | ');
+
     const customerNote = [
       `=== MAXEXPERT360 SERVICE MOBILE ===`,
-      `Prestations demandées :`,
-      ...itemNamesFormatted.map(name => `• ${name}`),
-      `Prix total estimé : ${calculatedTotal} $ CAD`,
-      durationLabel ? `Durée totale estimée : ${durationLabel}` : '',
-      input.vehicleMakeModel ? `Véhicule/Meuble : ${input.vehicleMakeModel}` : '',
+      `Forfait principal : ${mainPackageDisplayName || 'Nettoyage professionnel'}`,
+      ...(extraServicesDetails.length > 0 ? [`Options supplémentaires :`, ...extraServicesDetails.map(d => `• ${d}`)] : []),
+      `Prix total : ${calculatedTotal} $ CAD`,
+      durationLabel ? `Durée estimée : ${durationLabel}` : '',
+      vehicleDesc ? `Véhicule : ${vehicleDesc}` : '',
       input.notes ? `Instructions : ${input.notes}` : ''
     ].filter(Boolean).join('\n');
 
     const sellerNote = [
       `Adresse intervention : ${input.serviceAddress}`,
       `Client : ${input.clientName} (${input.clientPhone})`,
+      vehicleDesc ? `Véhicule : ${vehicleDesc}` : '',
       `Créneau souhaité : ${input.preferredTimeSlot}`,
       durationLabel ? `Durée totale estimée : ${durationLabel}` : '',
       `Total Devis : ${calculatedTotal} $ CAD (Déplacement inclus Drummondville)`
@@ -1037,8 +1107,16 @@ export class SquareBookingsService {
         preferredDate: input.preferredDate,
         preferredTimeSlot: input.preferredTimeSlot,
         vehicleMakeModel: input.vehicleMakeModel,
+        vehicleMake: input.vehicleMake,
+        vehicleModel: input.vehicleModel,
+        vehicleYear: input.vehicleYear,
+        vehicleCategory: input.vehicleCategory,
+        packageName: mainPackageDisplayName,
+        extraServicesDetails,
         servicesSummary,
-        totalPrice: calculatedTotal
+        totalPrice: calculatedTotal,
+        durationLabel,
+        photoCount: Array.isArray(input.bookingPhotos) ? input.bookingPhotos.length : 0
       });
     } catch (notifErr: any) {
       // Notification failure must NOT disrupt or cancel the confirmed Square booking

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { cloudStorageService } from './cloudStorage';
 
 export interface OwnerBookingNotificationParams {
   bookingId: string;
@@ -10,8 +11,16 @@ export interface OwnerBookingNotificationParams {
   preferredDate: string; // YYYY-MM-DD
   preferredTimeSlot: string; // e.g. "16:30"
   vehicleMakeModel?: string;
+  vehicleMake?: string;
+  vehicleModel?: string;
+  vehicleYear?: string;
+  vehicleCategory?: string;
+  packageName?: string;
+  extraServicesDetails?: string[];
   servicesSummary: string;
   totalPrice?: number;
+  durationLabel?: string;
+  photoCount?: number;
 }
 
 export class OwnerNotificationService {
@@ -118,8 +127,16 @@ export class OwnerNotificationService {
       preferredDate,
       preferredTimeSlot,
       vehicleMakeModel,
+      vehicleMake,
+      vehicleModel,
+      vehicleYear,
+      vehicleCategory,
+      packageName,
+      extraServicesDetails = [],
       servicesSummary,
-      totalPrice
+      totalPrice,
+      durationLabel,
+      photoCount = 0
     } = params;
 
     // 1. Strict deduplication check
@@ -139,30 +156,59 @@ export class OwnerNotificationService {
     const fromNumber = process.env.TWILIO_PHONE_NUMBER?.trim() || this.twilioSenderNumber;
     const toOwnerNumber = process.env.OWNER_PHONE_NUMBER?.trim() || process.env.OWNER_NOTIFICATION_PHONE?.trim() || this.defaultOwnerNumber;
 
-    // 3. Compose message body
+    // 3. Compose message body adhering to strict Quebec French standards
     const formattedDate = this.formatFrenchDate(preferredDate);
     const timeDisplay = preferredTimeSlot.includes('h') ? preferredTimeSlot : preferredTimeSlot.replace(':', 'h');
 
     const lines: string[] = [
       'NOUVEAU RENDEZ-VOUS MAXEXPERT360',
-      `Client: ${clientName || 'Client'}`,
-      `Téléphone: ${clientPhone || 'Non spécifié'}`,
-      `Service: ${servicesSummary || 'Service Nettoyage'}`
+      `Client : ${clientName || 'Client'}`,
+      `Téléphone : ${clientPhone || 'Non spécifié'}`,
+      `Adresse : ${serviceAddress || 'Drummondville'}`
     ];
 
-    if (vehicleMakeModel && vehicleMakeModel.trim()) {
-      lines.push(`Véhicule: ${vehicleMakeModel.trim()}`);
+    if (vehicleCategory || vehicleMake || vehicleModel || vehicleYear || vehicleMakeModel) {
+      const catDisplay = vehicleCategory === 'suv' ? 'VUS / SUV' : vehicleCategory === 'truck_van' ? 'Camionnette / Van' : vehicleCategory === 'auto' ? 'Auto / Berline' : (vehicleCategory || '');
+      if (catDisplay) lines.push(`Véhicule : ${catDisplay}`);
+      if (vehicleMake) lines.push(`Marque : ${vehicleMake}`);
+      if (vehicleModel) lines.push(`Modèle : ${vehicleModel}`);
+      if (vehicleYear) lines.push(`Année : ${vehicleYear}`);
+      if (!vehicleMake && !vehicleModel && vehicleMakeModel) {
+        lines.push(`Détails véhicule : ${vehicleMakeModel}`);
+      }
     }
 
-    lines.push(`Date: ${formattedDate}`);
-    lines.push(`Heure: ${timeDisplay}`);
-    lines.push(`Adresse: ${serviceAddress || 'Drummondville'}`);
+    if (packageName) {
+      lines.push(`Forfait : ${packageName}`);
+    } else {
+      lines.push(`Service : ${servicesSummary || 'Nettoyage professionnel'}`);
+    }
+
+    if (extraServicesDetails.length > 0) {
+      lines.push(`Prestations supplémentaires :`);
+      extraServicesDetails.forEach(detail => lines.push(`• ${detail}`));
+    }
 
     if (typeof totalPrice === 'number' && !isNaN(totalPrice)) {
-      lines.push(`Prix: ${totalPrice} $`);
+      lines.push(`Prix total CAD : ${totalPrice} $ CAD`);
     }
 
-    lines.push(`Square ID: ${bookingId}`);
+    if (durationLabel) {
+      lines.push(`Durée : ${durationLabel}`);
+    }
+
+    lines.push(`Date : ${formattedDate}`);
+    lines.push(`Heure : ${timeDisplay}`);
+    lines.push(`Square Booking ID : ${bookingId}`);
+
+    if (photoCount > 0) {
+      const galleryToken = cloudStorageService.generateAccessToken(bookingId);
+      lines.push(`Photos : ${photoCount}`);
+      lines.push(`Galerie photos sécurisée :`);
+      lines.push(`https://maxexpert360.ca/photos/${bookingId}?token=${galleryToken}`);
+    } else {
+      lines.push(`Photos : aucune`);
+    }
 
     const messageBody = lines.join('\n');
 

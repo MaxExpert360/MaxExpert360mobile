@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { DYNASTIE_INFO } from '../data/dynastieData';
 import { Language } from '../types';
+import { WINTER_MODE } from '../config/winterMode';
 
 interface ContactSectionProps {
   currentLang: Language;
@@ -24,7 +25,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ currentLang }) =
     name: '',
     phone: '',
     email: '',
-    serviceType: 'auto',
+    serviceType: WINTER_MODE ? 'sofa' : 'auto',
     address: '',
     message: ''
   });
@@ -43,7 +44,9 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ currentLang }) =
       formEmail: 'Courriel (optionnel)',
       formService: 'Type de service souhaité',
       formAddress: 'Votre ville ou adresse à Drummondville',
-      formMsg: 'Précisez votre demande (modèle d\'auto, type de sofa, tapis...)',
+      formMsg: WINTER_MODE
+        ? 'Précisez votre demande (type de sofa, tapis, matelas...)'
+        : 'Précisez votre demande (modèle d\'auto, type de sofa, tapis...)',
       sendBtn: 'Envoyer ma demande de soumission',
       successTitle: 'Demande transmise avec succès !',
       successMsg: 'Max vous contactera d\'ici 30 minutes avec votre confirmation.',
@@ -62,7 +65,9 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ currentLang }) =
       formEmail: 'Email (за бажанням)',
       formService: 'Послуга, яка вас цікавить',
       formAddress: 'Ваше місто чи адреса в регіоні',
-      formMsg: 'Деталі замовлення (модель авто, розмір дивану, площа килима...)',
+      formMsg: WINTER_MODE
+        ? 'Деталі замовлення (розмір дивану, площа килима, матрац...)'
+        : 'Деталі замовлення (модель авто, розмір дивану, площа килима...)',
       sendBtn: 'Надіслати заявку',
       successTitle: 'Запит успішно надіслано!',
       successMsg: 'Макс звʼяжеться з вами протягом 30 хвилин.',
@@ -270,7 +275,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ currentLang }) =
                         onChange={(e) => setFormData(prev => ({ ...prev, serviceType: e.target.value }))}
                         className="w-full bg-[#F8FCF9] border border-[#D5EAD9] rounded-xl px-3.5 py-2.5 text-xs text-[#0D2818] focus:outline-none focus:border-[#16A34A] focus:bg-white transition-colors cursor-pointer"
                       >
-                        <option value="auto">🚗 Esthétique Automobile</option>
+                        {!WINTER_MODE && <option value="auto">🚗 Esthétique Automobile</option>}
                         <option value="sofa">🛋️ Sofas & Divans</option>
                         <option value="carpet">🟫 Tapis & Escaliers</option>
                         <option value="mattress">🛏️ Matelas & Désinfection</option>
@@ -301,7 +306,9 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ currentLang }) =
                       rows={3}
                       value={formData.message}
                       onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                      placeholder="Ex: Nettoyage complet pour VUS Mazda CX-5 et sofa sectionnel en tissu..."
+                      placeholder={WINTER_MODE
+                        ? 'Ex: Nettoyage complet pour sofa sectionnel en tissu et tapis de salon...'
+                        : 'Ex: Nettoyage complet pour VUS Mazda CX-5 et sofa sectionnel en tissu...'}
                       className="w-full bg-[#F8FCF9] border border-[#D5EAD9] rounded-xl px-3.5 py-2.5 text-xs text-[#0D2818] placeholder-[#8BAAA0] focus:outline-none focus:border-[#16A34A] focus:bg-white transition-colors resize-none"
                     />
                   </div>

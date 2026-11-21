@@ -15,6 +15,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Language } from '../types';
+import { WINTER_MODE } from '../config/winterMode';
 
 export interface ChatMessage {
   id: string;
@@ -97,7 +98,9 @@ export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
       },
       roleDescriptions: {
         video_director: 'Створення монтажних планів (Shot list), таймкодів, B-Roll промптів для Veo/Runway, гачків та саунд-дизайну.',
-        cleaning_expert: 'Консультації щодо складних плям, догляду за авто, розрахунку вартості та еко-засобів.',
+        cleaning_expert: WINTER_MODE
+          ? 'Консультації щодо складних плям, чистки меблів, килимів, матраців та еко-засобів.'
+          : 'Консультації щодо складних плям, догляду за авто, розрахунку вартості та еко-засобів.',
         general_assistant: 'Універсальний інтелектуальний помічник для будь-яких питань.'
       },
       models: {
@@ -118,7 +121,11 @@ export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
           '🔥 Які 3 найкращі гачки (hooks) для перших 3 секунд відео?',
           '🎞️ Сформуй таймлайн у форматі JSON для Adobe Premiere Pro / DaVinci'
         ],
-        cleaning_expert: [
+        cleaning_expert: WINTER_MODE ? [
+          '☕ Чим вивести застарілу пляму від кави зі світлого тканинного дивана?',
+          '🛋️ Як часто рекомендується проводити антибактеріальну хімчистку матраца?',
+          '🟫 Як правильно доглядати за килимами після професійної хімчистки?'
+        ] : [
           '🚗 Як ефективно видалити зимовий білий сольовий наліт з ковроліну?',
           '☕ Чим вивести застарілу пляму від кави зі світлого тканинного дивана?',
           '🛋️ Як часто рекомендується проводити антибактеріальну хімчистку матраца?',
@@ -145,7 +152,9 @@ export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
       },
       roleDescriptions: {
         video_director: 'Plans de tournage, timecodes, prompts B-Roll pour Veo/Runway, accroches et sound design.',
-        cleaning_expert: 'Conseils pour taches tenaces, entretien auto, meubles et produits 100% écologiques.',
+        cleaning_expert: WINTER_MODE
+          ? 'Conseils pour taches tenaces, nettoyage de meubles, tapis, matelas et produits 100% écologiques.'
+          : 'Conseils pour taches tenaces, entretien auto, meubles et produits 100% écologiques.',
         general_assistant: 'Assistant intelligent pour toutes vos questions générales.'
       },
       models: {
@@ -165,7 +174,10 @@ export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
           '🔥 Quelles sont les meilleures accroches (hooks) pour les 3 premières secondes ?',
           '🎞️ Génère une structure de timeline au format JSON pour DaVinci Resolve'
         ],
-        cleaning_expert: [
+        cleaning_expert: WINTER_MODE ? [
+          '☕ Comment enlever une tache de café sur un canapé en tissu clair ?',
+          '🛏️ À quelle fréquence désinfecter un matelas contre les acariens ?'
+        ] : [
           '🚗 Comment éliminer les cernes de sel et calcaire d\'hiver sur les tapis auto ?',
           '☕ Comment enlever une tache de café sur un canapé en tissu clair ?',
           '💲 Quels sont les tarifs pour un nettoyage complet d\'intérieur de VUS ?'
@@ -190,7 +202,9 @@ export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
       },
       roleDescriptions: {
         video_director: 'Shot lists, timeline breakdown, B-roll prompts for Veo/Runway, hooks, and sound design.',
-        cleaning_expert: 'Expert tips on stubborn stains, vehicle interior care, pricing, and eco-friendly products.',
+        cleaning_expert: WINTER_MODE
+          ? 'Expert tips on stubborn stains, sofas, carpets, mattresses, pricing, and eco-friendly products.'
+          : 'Expert tips on stubborn stains, vehicle interior care, pricing, and eco-friendly products.',
         general_assistant: 'Versatile AI assistant ready to help with any task.'
       },
       models: {
@@ -210,7 +224,10 @@ export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
           '🔥 What are the top 3 high-retention hooks for the first 3 seconds?',
           '🎞️ Format a structured timeline in JSON for Premiere Pro / DaVinci'
         ],
-        cleaning_expert: [
+        cleaning_expert: WINTER_MODE ? [
+          '☕ How to clean an old coffee stain from a light fabric sofa?',
+          '🛏️ How often should a mattress be professionally sanitized?'
+        ] : [
           '🚗 How to remove winter calcium salt stains from car carpets?',
           '☕ How to clean an old coffee stain from a light fabric sofa?',
           '💲 What is included in the full interior SUV mobile detailing package?'
@@ -343,7 +360,7 @@ export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
               {selectedRole === 'video_director' ? (
                 <Film className="w-5 h-5 text-[#16A34A]" />
               ) : selectedRole === 'cleaning_expert' ? (
-                <Car className="w-5 h-5 text-[#16A34A]" />
+                WINTER_MODE ? <Sparkles className="w-5 h-5 text-[#16A34A]" /> : <Car className="w-5 h-5 text-[#16A34A]" />
               ) : (
                 <Bot className="w-5 h-5 text-[#16A34A]" />
               )}
@@ -418,7 +435,7 @@ export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
                 }`}
               >
                 {r === 'video_director' && <Film className="w-3.5 h-3.5" />}
-                {r === 'cleaning_expert' && <Car className="w-3.5 h-3.5" />}
+                {r === 'cleaning_expert' && (WINTER_MODE ? <Sparkles className="w-3.5 h-3.5" /> : <Car className="w-3.5 h-3.5" />)}
                 {r === 'general_assistant' && <Zap className="w-3.5 h-3.5" />}
                 <span>{t.roles[r]}</span>
               </button>

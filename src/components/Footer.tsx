@@ -14,6 +14,7 @@ import {
 import { DYNASTIE_INFO } from '../data/dynastieData';
 import { Language } from '../types';
 import { MaxLogo } from './MaxLogo';
+import { WINTER_MODE } from '../config/winterMode';
 
 interface FooterProps {
   currentLang: Language;
@@ -26,13 +27,17 @@ export const Footer: React.FC<FooterProps> = ({ currentLang }) => {
 
   const t = {
     fr: {
-      about: 'MaxExpert360mobile est votre spécialiste en nettoyage mobile professionnel à domicile à Drummondville et dans tout le Centre-du-Québec. Autos, camions lourds, sofas, tapis et matelas avec produits 100% écologiques.',
+      about: WINTER_MODE
+        ? 'MaxExpert360mobile est votre spécialiste en nettoyage mobile professionnel à domicile à Drummondville et dans tout le Centre-du-Québec. Camions lourds, sofas, tapis et matelas avec produits 100% écologiques.'
+        : 'MaxExpert360mobile est votre spécialiste en nettoyage mobile professionnel à domicile à Drummondville et dans tout le Centre-du-Québec. Autos, camions lourds, sofas, tapis et matelas avec produits 100% écologiques.',
       punchline: '« Vous vous détendez, on s\'occupe du reste ! »',
       quickLinks: 'Navigation Rapide',
       services: 'Nos Spécialités',
       contactInfo: 'Coordonnées Directes',
       rights: 'Tous droits réservés.',
-      legalNote: 'MaxExpert360mobile • Service mobile d\'esthétique automobile et de nettoyage résidentiel & commercial à domicile. Drummondville, QC.',
+      legalNote: WINTER_MODE
+        ? 'MaxExpert360mobile • Service mobile de nettoyage résidentiel & commercial à domicile. Drummondville, QC.'
+        : 'MaxExpert360mobile • Service mobile d\'esthétique automobile et de nettoyage résidentiel & commercial à domicile. Drummondville, QC.',
       srv1: 'Nettoyage Auto Intérieur & Extérieur',
       srv2: 'Sofas, Fauteuils & Sectionnels',
       srv3: 'Tapis, Moquettes & Escaliers',
@@ -40,7 +45,9 @@ export const Footer: React.FC<FooterProps> = ({ currentLang }) => {
       srv5: 'Cabines Camions Lourds & VR'
     },
     ua: {
-      about: 'MaxExpert360mobile — ваш надійний експерт з мобільного клінінгу та детейлінгу з виїздом додому в Drummondville та регіоні. Авто, дивани, килими, матраци та тягачі з екологічними засобами.',
+      about: WINTER_MODE
+        ? 'MaxExpert360mobile — ваш надійний експерт з мобільного клінінгу з виїздом додому в Drummondville та регіоні. Дивани, килими, матраци та тягачі з екологічними засобами.'
+        : 'MaxExpert360mobile — ваш надійний експерт з мобільного клінінгу та детейлінгу з виїздом додому в Drummondville та регіоні. Авто, дивани, килими, матраци та тягачі з екологічними засобами.',
       punchline: '«Ви відпочиваєте — ми дбаємо про ідеальну чистоту!»',
       quickLinks: 'Швидка Навігація',
       services: 'Послуги',
@@ -54,7 +61,9 @@ export const Footer: React.FC<FooterProps> = ({ currentLang }) => {
       srv5: 'Хімчистка тягачів та кемперів'
     },
     en: {
-      about: 'MaxExpert360mobile is your trusted mobile at-home detailing & deep cleaning specialist in Drummondville and Centre-du-Québec. Autos, heavy trucks, sofas, rugs and mattresses with 100% eco-friendly products.',
+      about: WINTER_MODE
+        ? 'MaxExpert360mobile is your trusted mobile at-home deep cleaning specialist in Drummondville and Centre-du-Québec. Heavy trucks, sofas, rugs and mattresses with 100% eco-friendly products.'
+        : 'MaxExpert360mobile is your trusted mobile at-home detailing & deep cleaning specialist in Drummondville and Centre-du-Québec. Autos, heavy trucks, sofas, rugs and mattresses with 100% eco-friendly products.',
       punchline: '“You relax, we take care of the rest!”',
       quickLinks: 'Quick Links',
       services: 'Services',
@@ -111,9 +120,11 @@ export const Footer: React.FC<FooterProps> = ({ currentLang }) => {
               <li>
                 <a href="#taches-difficiles" className="hover:text-[#4ADE80] transition-colors">Taches difficiles</a>
               </li>
-              <li>
-                <a href="#avant-apres" className="hover:text-[#4ADE80] transition-colors">Avant / Après</a>
-              </li>
+              {!WINTER_MODE && (
+                <li>
+                  <a href="#avant-apres" className="hover:text-[#4ADE80] transition-colors">Avant / Après</a>
+                </li>
+              )}
               <li>
                 <a href="#tarifs" className="hover:text-[#4ADE80] transition-colors">Tarifs & Calculateur</a>
               </li>
@@ -129,7 +140,7 @@ export const Footer: React.FC<FooterProps> = ({ currentLang }) => {
               {t.services}
             </h4>
             <ul className="space-y-2 text-xs text-[#A3C7B2]">
-              <li><a href="#services" className="hover:text-white transition-colors">{t.srv1}</a></li>
+              {!WINTER_MODE && <li><a href="#services" className="hover:text-white transition-colors">{t.srv1}</a></li>}
               <li><a href="#services" className="hover:text-white transition-colors">{t.srv2}</a></li>
               <li><a href="#services" className="hover:text-white transition-colors">{t.srv3}</a></li>
               <li><a href="#services" className="hover:text-white transition-colors">{t.srv4}</a></li>

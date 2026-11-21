@@ -21,6 +21,7 @@ import {
   BookingCart 
 } from './types';
 import { createDefaultCart, openOfficialSquareBooking } from './services/squareBookings';
+import { WINTER_MODE } from './config/winterMode';
 
 export function App() {
   const [currentLang, setCurrentLang] = useState<Language>('fr');
@@ -29,14 +30,16 @@ export function App() {
   const [isWriteReviewOpen, setIsWriteReviewOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   
-  const [activeCategoryTab, setActiveCategoryTab] = useState<'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck'>('auto');
+  const [activeCategoryTab, setActiveCategoryTab] = useState<'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck'>(
+    WINTER_MODE ? 'furniture' : 'auto'
+  );
   
   // Unified cart state across the entire session
   const [cart, setCart] = useState<BookingCart>(createDefaultCart);
 
   // Custom calculator state passed to booking modal
   const [activeCalculatorState, setActiveCalculatorState] = useState<AutoCalculatorState>({
-    vehicleCategory: 'suv',
+    vehicleCategory: WINTER_MODE ? 'sofa' : 'suv',
     packageId: 'complet',
     feetLength: 22,
     selectedExtras: [],
@@ -44,7 +47,7 @@ export function App() {
     serviceLocation: 'mobile',
     frequencyDiscount: 'once'
   });
-  const [activeEstimatedPrice, setActiveEstimatedPrice] = useState<number>(209);
+  const [activeEstimatedPrice, setActiveEstimatedPrice] = useState<number>(WINTER_MODE ? 130 : 209);
   const [selectedStainTypes, setSelectedStainTypes] = useState<string[]>([]);
 
   const handleOpenBooking = () => {
@@ -154,7 +157,7 @@ export function App() {
 
   const scrollToCalculator = (tab?: 'auto' | 'furniture' | 'carpet' | 'mattress' | 'truck') => {
     if (tab) {
-      setActiveCategoryTab(tab);
+      setActiveCategoryTab(WINTER_MODE && tab === 'auto' ? 'furniture' : tab);
     }
     const el = document.getElementById('tarifs') || document.getElementById('calculator');
     if (el) {
@@ -205,14 +208,16 @@ export function App() {
           onUpdateExtraQuantity={handleUpdateExtraQuantityFromStains}
           selectedStainTypes={selectedStainTypes}
           onToggleStainType={handleToggleStainType}
-          onScrollToCalculator={() => scrollToCalculator('auto')}
+          onScrollToCalculator={() => scrollToCalculator(WINTER_MODE ? 'furniture' : 'auto')}
         />
 
         {/* 5. Nos Réalisations Authentiques : Vidéo + Photo Avant / Après */}
-        <AvantApresVideos 
-          currentLang={currentLang}
-          onOpenBooking={handleOpenBooking}
-        />
+        {!WINTER_MODE && (
+          <AvantApresVideos 
+            currentLang={currentLang}
+            onOpenBooking={handleOpenBooking}
+          />
+        )}
 
         {/* 6. Avis Clients / Відгуки Клієнтів */}
         <ReviewsSection 

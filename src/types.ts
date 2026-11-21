@@ -256,6 +256,8 @@ export interface ParsedAddressDetails {
 export interface AutoBookingFormData {
   vehicleCategory: VehicleCategory;
   vehicleMakeModel: string;
+  vehicleMake?: string;
+  vehicleModel?: string;
   vehicleYear?: string;
   packageId: string;
   feetLength?: number;
